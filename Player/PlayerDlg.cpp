@@ -51,9 +51,9 @@ END_MESSAGE_MAP()
 
 CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_PLAYER_DIALOG, pParent)
-	, m_pAudio(nullptr)
+// 	, m_pAudio(nullptr)
 	, m_pVideo(nullptr)
-	, m_pARThread(nullptr)
+//	, m_pARThread(nullptr)
 	, m_pVRThread(nullptr)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -108,7 +108,10 @@ BOOL CPlayerDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 큰 아이콘을 설정합니다.
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
-	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	
+	// 초기화 작업
+	MoveWindow(NULL, NULL, 976, 599);
+
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -169,56 +172,58 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 {
 	switch (pMsg->message)
 	{
-		// 키 이벤트
+	// 키 이벤트
 	case WM_KEYDOWN:
 		switch (pMsg->wParam)
 		{
-			// ESC
+		// ESC
 		case VK_ESCAPE:
 			return TRUE;
 
-			// ENTER : 전체 화면/창모드 토글
+		// ENTER : 전체 화면/창모드 토글
 		case VK_RETURN:
+			if (m_pVRThread != nullptr)
+				m_pVRThread->SuspendThread();
 			if (m_bIsFullScreen)
 			{
+				m_bIsFullScreen = false;
 				SetMenu(m_dlgMenu);
 				SetWindowLong(this->m_hWnd, GWL_STYLE, m_nWindowded);
 				SetWindowPos(GetParent(), m_rectPrevWindow.left, m_rectPrevWindow.top,
 					m_rectPrevWindow.right - m_rectPrevWindow.left,
 					m_rectPrevWindow.bottom - m_rectPrevWindow.top, NULL);
-				m_bIsFullScreen = false;
 			}
 			else
 			{
+				m_bIsFullScreen = true;
 				m_nWindowded = GetWindowLong(this->m_hWnd, GWL_STYLE);
 				GetWindowRect(m_rectPrevWindow);
 				SetWindowLong(this->GetSafeHwnd(), GWL_STYLE,
-					GetWindowLong(this->m_hWnd, GWL_STYLE) & ~(WS_DLGFRAME/* | WS_OVERLAPPEDWINDOW*/));
-				SetWindowPos(GetParent(), 0, 0,
-					GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL);
+					GetWindowLong(this->m_hWnd, GWL_STYLE) & ~(WS_DLGFRAME | WS_OVERLAPPEDWINDOW));
 				m_dlgMenu = GetMenu();
 				SetMenu(NULL);
 				ShowWindow(SW_SHOWMAXIMIZED);
-				m_bIsFullScreen = true;
 			}
+			if (m_pVRThread != nullptr)
+				m_pVRThread->ResumeThread();
 			return TRUE;
 
-			// SPACEBAR : 재생/일시정지 토글
+		// SPACEBAR : 재생/일시정지 토글
 		case VK_SPACE:
 			if (m_pVideo != NULL)
 			{
 				switch (m_pVideo->renderState)
 				{
 				case RENDER_STATE_STARTED:
-					m_pVideo->renderState = RENDER_STATE_PAUSED;
-					//m_pDThread->SuspendThread();
-					m_pARThread->SuspendThread();
+ 					m_pVideo->renderState = RENDER_STATE_PAUSED;
+					m_pDThread->SuspendThread();
+					//m_pARThread->SuspendThread();
 					m_pVRThread->SuspendThread();
 					break;
 				case RENDER_STATE_PAUSED:
-					m_pVideo->renderState = RENDER_STATE_STARTED;
-					//m_pDThread->ResumeThread();
-					m_pARThread->ResumeThread();
+ 					m_pVideo->renderState = RENDER_STATE_STARTED;
+					m_pDThread->ResumeThread();
+					//m_pARThread->ResumeThread();
 					m_pVRThread->ResumeThread();
 					break;
 				}
@@ -242,16 +247,36 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 {
 	CFFmpeg * m_pDecoder = (CFFmpeg *)_method;
+	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
 
-	m_pDecoder->renderState = RENDER_STATE_STARTED;
-	m_pDecoder->Decoder();
+	while (m_pDecoder->Decoder() >= 0)
+	{
+		SetEvent(pDlg->m_hDEvent);
+		WaitForSingleObject(pDlg->m_hVREvent, 0);
+	}
+	pDlg->OnClose();
 
-	// 재생 마치고 검은색 배경 그리기
-	CDC * pDC = AfxGetMainWnd()->GetDC();
-	AfxGetMainWnd()->GetClientRect(m_pDecoder->viewRect);
-	pDC->FillSolidRect(m_pDecoder->viewRect, RGB(0, 0, 0));
-	AfxGetMainWnd()->ReleaseDC(pDC);
+	CloseHandle(pDlg->m_hDEvent);
+	return 0;
+}
 
+
+
+// D3D 비디오 렌더러 스레드
+UINT CPlayerDlg::D3DVideoRendererThread(LPVOID _method)
+{
+	CD3DRenderer * m_pVideo = (CD3DRenderer *)_method;
+	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
+
+	while (pDlg->m_hDEvent != NULL)
+	{
+		WaitForSingleObject(pDlg->m_hDEvent, 1000);
+		m_pVideo->D3DVideoRender(
+			*(pDlg->m_pDecoder->videoData), pDlg->m_pDecoder->viewRect);
+		SetEvent(pDlg->m_hVREvent);
+	}
+
+	CloseHandle(pDlg->m_hVREvent);
 	return 0;
 }
 
@@ -261,8 +286,8 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 void CPlayerDlg::DrawBlackScreen()
 {
 	CDC * pDC = AfxGetMainWnd()->GetDC();
-	AfxGetMainWnd()->GetClientRect(m_pVideo->viewRect);
-	pDC->FillSolidRect(m_pVideo->viewRect, RGB(0, 0, 0));
+ 	AfxGetMainWnd()->GetClientRect(m_pDecoder->viewRect);
+	pDC->FillSolidRect(m_pDecoder->viewRect, RGB(0, 0, 0));
 	AfxGetMainWnd()->ReleaseDC(pDC);
 }
 
@@ -291,34 +316,31 @@ void CPlayerDlg::OnOpenFile()
 	{
 		filePath = pDlg.GetPathName();
 
-		// 열려있던 스레드가 있으면 처리
-		if (m_pARThread != nullptr)
-		{
-			HANDLE hThread = m_pARThread->m_hThread;
-			TerminateThread(hThread, 1);
-		}
-		if (m_pVRThread != nullptr)
-		{
-			HANDLE hThread = m_pVRThread->m_hThread;
-			TerminateThread(hThread, 1);
-		}
-
-		// 재생 초기 검은색 배경 그리기
+		// 초기화
+		OnClose();
 		DrawBlackScreen();
 
 		// 미디어 소스 열기 + 초기화
-		m_pAudio = new CFFmpeg(DECODE_AUDIO);
-		m_pVideo = new CFFmpeg(DECODE_VIDEO);
-		if (FAILED(m_pAudio->OpenMediaSource(filePath)))
-			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
-		if (FAILED(m_pVideo->OpenMediaSource(filePath)))
+		m_pDecoder	= new CFFmpeg();
+		m_pVideo	= new CD3DRenderer();
+
+		if (FAILED(m_pDecoder->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 
-		// 오디오 렌더링 스레드
-		m_pARThread = AfxBeginThread(FFmpegDecoderThread, m_pAudio);
+		// Direct3D 초기화
+		m_pVideo->renderState = RENDER_STATE_STARTED;
+		m_pVideo->D3DInitialize(this->m_hWnd,
+			m_pDecoder->videoWidth, m_pDecoder->videoHeight, m_pDecoder->viewRect);
 
-		// 비디오 렌더링 스레드
-		m_pVRThread = AfxBeginThread(FFmpegDecoderThread, m_pVideo);
+		// 스레드 이벤트 핸들 초기화
+		m_hDEvent	= CreateEvent(NULL, FALSE, TRUE, NULL);
+//		m_hAREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
+		m_hVREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
+
+		// 스레드 시작
+		m_pDThread	= AfxBeginThread(FFmpegDecoderThread, m_pDecoder);
+// 		m_pARThread	= AfxBeginThread(, m_pAudio);
+		m_pVRThread	= AfxBeginThread(D3DVideoRendererThread, m_pVideo);
 	}
 
 }
@@ -328,23 +350,34 @@ void CPlayerDlg::OnOpenFile()
 // 파일 → 파일 닫기 메뉴
 void CPlayerDlg::OnClose()
 {
-	if (m_pARThread != nullptr)
+	if (m_pDThread != nullptr)
 	{
-		HANDLE hThread = m_pARThread->m_hThread;
+		HANDLE hThread = m_pDThread->m_hThread;
 		TerminateThread(hThread, 1);
 	}
+// 	if (m_pARThread != nullptr)
+// 	{
+// 		HANDLE hThread = m_pARThread->m_hThread;
+// 		TerminateThread(hThread, 1);
+// 	}
 	if (m_pVRThread != nullptr)
 	{
 		HANDLE hThread = m_pVRThread->m_hThread;
 		TerminateThread(hThread, 1);
 	}
-	if (m_pAudio != nullptr)
-	{
-		m_pAudio->~CFFmpeg();
-	}
 	if (m_pVideo != nullptr)
 	{
-		m_pVideo->~CFFmpeg();
+		delete m_pVideo;
+		m_pVideo = nullptr;
+	}
+// 	if (m_pAudio != nullptr)
+// 	{
+// 		m_pAudio->~CFFmpeg();
+// 	}
+	if (m_pDecoder != nullptr)
+	{
+		delete m_pDecoder;
+		m_pDecoder = nullptr;
 	}
 	DrawBlackScreen();
 }
@@ -375,17 +408,11 @@ void CPlayerDlg::OnFullscreen()
 
 
 
-// 화면 크기 조절시 레터박스 처리
+// 화면 크기 조절시 안정성 증가
 void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-
-	if (m_pVRThread != nullptr)
-	{
-		m_pVRThread->SuspendThread();
-		DrawBlackScreen();
-		m_pVRThread->ResumeThread();
-	}
+	//DrawBlackScreen();
 }
 
 

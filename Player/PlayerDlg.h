@@ -28,13 +28,17 @@ public:
 protected:
 	HICON m_hIcon;
 
-	//CFFmpeg *		m_pDecoder;		// FFmpeg 디코더&디먹서 객체
-	CFFmpeg *		m_pAudio;		// FFmpeg 오디오 디코딩 객체
-	CFFmpeg *		m_pVideo;		// FFmpeg 비디오 디코딩 객체
+	CFFmpeg *		m_pDecoder;		// FFmpeg 디코더&디먹서 객체
+//	CXAudio *		m_pAudio;		// FFmpeg 오디오 디코딩 객체
+	CD3DRenderer *	m_pVideo;		// FFmpeg 비디오 디코딩 객체
 
-//	CWinThread *	m_pDThread;		// 디코더&디먹서 스레드 객체
-	CWinThread *	m_pARThread;	// 오디오 렌더러 스레드 객체
+	CWinThread *	m_pDThread;		// 디코더&디먹서 스레드 객체
+//	CWinThread *	m_pARThread;	// 오디오 렌더러 스레드 객체
 	CWinThread *	m_pVRThread;	// 비디오 렌더러 스레드 객체
+
+	HANDLE	m_hDEvent;				// 디코더&디먹서 스레드 이벤트 핸들
+//	HANDLE	m_hAREvent;				// 오디오 렌더러 스레드 이벤트 핸들
+	HANDLE	m_hVREvent;				// 비디오 렌더러 스레드 이벤트 핸들
 
 	CRect	m_rectPrevWindow;		// 윈도우 상태 좌표
 	int		m_nWindowded;			// 윈도우 상태 스타일
@@ -51,7 +55,10 @@ protected:
 public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	static	UINT FFmpegDecoderThread(LPVOID _method);
+//	static	UINT ???AudioRendererThread(LPVOID _method);
+	static	UINT D3DVideoRendererThread(LPVOID _method);
 
+	bool IsFullScreen() { return m_bIsFullScreen; }
 	void DrawBlackScreen();
 
 	afx_msg void OnOpenFile();

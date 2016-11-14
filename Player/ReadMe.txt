@@ -79,6 +79,16 @@ void D3DReset(int width, int height)
 	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
 	d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
 
+// 	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp;
+// 	pDlg->DrawBlackScreen();
+
 	m_pDirect3DDevice->Reset(&d3dpp);
 }
 
+
+
+	// 재생 마치고 검은색 배경 그리기
+	CDC * pDC = AfxGetMainWnd()->GetDC();
+	AfxGetMainWnd()->GetClientRect(m_pDecoder->viewRect);
+	pDC->FillSolidRect(m_pDecoder->viewRect, RGB(0, 0, 0));
+	AfxGetMainWnd()->ReleaseDC(pDC);

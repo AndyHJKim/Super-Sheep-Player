@@ -3,28 +3,33 @@
 //
 
 #include "stdafx.h"
+#include "PlayerDlg.h"
 #include "D3DRenderer.h"
 
 
 
-CRITICAL_SECTION	m_critial;
+// D3D 렌더러 객체 생성자
+CD3DRenderer::CD3DRenderer()
+	: m_pDirect3D9(NULL)
+	, m_pDirect3DDevice(NULL)
+	, m_pDirect3DSurfaceRender(NULL)
+	, bitPerPixel(12)
+{
 
-IDirect3D9 *		m_pDirect3D9 = NULL;
-IDirect3DDevice9 *	m_pDirect3DDevice = NULL;
-IDirect3DSurface9 *	m_pDirect3DSurfaceRender = NULL;
-
-HWND	m_hWnd;
-RECT	m_dstViewport;
-
-ULONG	pixelWidth;
-ULONG	pixelHeight;
-double	aspRatio;
-const int bpp = 12;
+}
 
 
 
-// D3D 사용 전 초기화
-HRESULT D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight)
+// D3D 렌더러 객체 소멸자
+CD3DRenderer::~CD3DRenderer()
+{
+
+}
+
+
+
+// D3D 사용 전 장치 초기화
+HRESULT CD3DRenderer::D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight, RECT viewRect)
 {
 	HRESULT hr;
 
@@ -65,13 +70,17 @@ HRESULT D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight)
 		&m_pDirect3DSurfaceRender,
 		NULL);
 
+	m_prevViewport.right = viewRect.right;
+	m_prevViewport.bottom = viewRect.bottom;
+
 	return hr;
+
 }
 
 
 
 // D3D 렌더링 과정
-HRESULT D3DVideoRender(UINT8* buffer, CRect docRect)
+HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 {
 	HRESULT	hr;
 
@@ -85,13 +94,13 @@ HRESULT D3DVideoRender(UINT8* buffer, CRect docRect)
 	if (FAILED(hr))
 		return hr;
 
-	// 버퍼 세팅
+	// 버퍼 초기 세팅
 	byte*	pSrc = buffer;
 	byte*	pDest = (byte *)d3dRect.pBits;
 	int		stride = d3dRect.Pitch;
 	ULONG	i = 0;
 
-	// 데이터 복사 (YUV420p 포맷에 맞게) 
+	// YUV420p 포맷에 맞게 데이터를 버퍼에 복사
 	for (i = 0; i < pixelHeight; i++)
 	{
 		memcpy(pDest + i*stride,
@@ -119,12 +128,20 @@ HRESULT D3DVideoRender(UINT8* buffer, CRect docRect)
 	if (m_pDirect3DDevice == NULL)
 		return E_FAIL;
 
+	// 화면 비율 유지 설정
+	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp;
+	if (pDlg->IsFullScreen()
+		|| m_prevViewport.right != docRect.Width()
+		|| m_prevViewport.bottom != docRect.Height())
+	{
+		pDlg->DrawBlackScreen();
+		m_prevViewport.right = docRect.Width();
+		m_prevViewport.bottom = docRect.Height();
+	}
 
 	m_dstViewport.right = docRect.Width();
 	m_dstViewport.bottom = docRect.Height();
 
-
-	// 화면 비율 유지 설정
 	double scrRatio = (double)m_dstViewport.right / m_dstViewport.bottom;
 	if (aspRatio > scrRatio)
 	{
@@ -143,7 +160,7 @@ HRESULT D3DVideoRender(UINT8* buffer, CRect docRect)
 		m_dstViewport.bottom = docRect.Height();
 	}
 
-
+	// 화면에 표시하기 위한 최종 과정
 	IDirect3DSurface9 * pBackBuffer = NULL;
 	m_pDirect3DDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 	m_pDirect3DDevice->BeginScene();
@@ -162,7 +179,7 @@ HRESULT D3DVideoRender(UINT8* buffer, CRect docRect)
 
 
 // D3D 작업 후 자원 정리
-void D3DCleanup()
+void CD3DRenderer::D3DCleanup()
 {
 	EnterCriticalSection(&m_critial);
 	if (m_pDirect3DSurfaceRender)
@@ -173,8 +190,5 @@ void D3DCleanup()
 		m_pDirect3D9->Release();
 	LeaveCriticalSection(&m_critial);
 }
-
-
-
 
 
