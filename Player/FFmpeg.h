@@ -17,7 +17,7 @@ extern "C" {
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
 }
-#include "DSoundRenderer.h"
+#include "XAudio2Renderer.h"
 #pragma comment(lib, "swresample.lib")
 
 
@@ -82,5 +82,8 @@ public:
 	int m_resampleLineSize;
 
 	int threadType;
+
+	unsigned char* m_pSwr_buf;
+	int m_swr_buf_len = 0;
 };
 

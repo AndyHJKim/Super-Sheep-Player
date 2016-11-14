@@ -29,6 +29,7 @@ CFFmpeg::CFFmpeg(int type)
 	, m_pSwrCtx(NULL)
 	, m_resampledBuffer(NULL)
 	, threadType(type)
+	, m_pSwr_buf(NULL)	
 {
 	m_AudioRender = new AudioRenderer();
 	av_register_all();
@@ -224,19 +225,10 @@ HRESULT CFFmpeg::Decoder()
 	avPacket.size = 0;
 
 	//DirectSound 초기화
-	m_AudioRender->DSoundInitialize(AfxGetMainWnd()->GetSafeHwnd(), avAudioCodecCtx->channels,
-		avAudioCodecCtx->sample_rate, avAudioCodecCtx->bits_per_coded_sample);
+	m_AudioRender->XAudio2Initialize(AfxGetMainWnd()->GetSafeHwnd(), avAudioCodecCtx->channels,
+		avAudioCodecCtx->sample_rate);
 
-	m_pSwrCtx = swr_alloc();
-	av_opt_set_int(m_pSwrCtx, "in_channel_layout", avAudioCodecCtx->channel_layout, 0);
-	av_opt_set_int(m_pSwrCtx, "in_sample_rate", avAudioCodecCtx->sample_rate, 0);
-	av_opt_set_sample_fmt(m_pSwrCtx, "in_sample_fmt", avAudioCodecCtx->sample_fmt, 0);
-	av_opt_set_int(m_pSwrCtx, "out_channel_layout", avAudioCodecCtx->channel_layout, 0);
-	av_opt_set_int(m_pSwrCtx, "out_sample_rate", avAudioCodecCtx->sample_rate, 0);
-	av_opt_set_sample_fmt(m_pSwrCtx, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
-	swr_init(m_pSwrCtx);
-
-
+	
 	int64_t pts = 0;
 
 	int ret = -1;
@@ -266,6 +258,7 @@ HRESULT CFFmpeg::Decoder()
 			avPacket.data += ret;
 			avPacket.size -= ret;
 		} while (avPacket.size > 0);
+		av_packet_unref(&avPacket);
 	}
 
 	avPacket.data = NULL;
@@ -278,7 +271,9 @@ HRESULT CFFmpeg::Decoder()
 			DecodeVideoFrame(&gotFrame, 1);
 	} while (gotFrame);
 
-	av_packet_unref(&avPacket);
+	m_AudioRender->XAudio2Cleanup();
+
+	//av_packet_unref(&avPacket);
 	av_frame_free(&avFrame);
 
 	return hr;
@@ -303,52 +298,37 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 
 	if (*gotFrame)
 	{
-		int numChannels = av_get_channel_layout_nb_channels(avAudioCodecCtx->channel_layout);
-		// 변환 할 샘플 수 계산.
-		int numSamples = av_rescale_rnd(
-			swr_get_delay(m_pSwrCtx, avAudioCodecCtx->sample_rate) + avFrame->nb_samples,
-			avAudioCodecCtx->sample_rate, avAudioCodecCtx->sample_rate, AV_ROUND_UP);
-
-		if (m_resampledBuffer)
-		{
-			if (m_resampleMaxCount < numSamples)
-			{
-				av_freep(m_resampledBuffer[0]);
-				av_samples_alloc(m_resampledBuffer, &m_resampleLineSize, numChannels,
-					numSamples, AV_SAMPLE_FMT_S16, 1);
-				m_resampleMaxCount = numSamples;
+		if (m_pSwrCtx == NULL) {
+			m_pSwrCtx = swr_alloc();
+			if (m_pSwrCtx == NULL) {
+				AfxMessageBox(_T("swr_alloc error.\n"));
+				return -1;
 			}
-		}
-		else
-		{
-			av_samples_alloc_array_and_samples(&m_resampledBuffer, &m_resampleLineSize,
-				numChannels, numSamples, AV_SAMPLE_FMT_S16, 1);
-			m_resampleMaxCount = numSamples;
+			av_opt_set_int(m_pSwrCtx, "in_channel_layout", avFrame->channel_layout, 0);
+			av_opt_set_int(m_pSwrCtx, "out_channel_layout", avFrame->channel_layout, 0);
+			av_opt_set_int(m_pSwrCtx, "in_sample_rate", avFrame->sample_rate, 0);
+			av_opt_set_int(m_pSwrCtx, "out_sample_rate", avFrame->sample_rate, 0);
+			av_opt_set_sample_fmt(m_pSwrCtx, "in_sample_fmt", (AVSampleFormat)avFrame->format, 0);
+			av_opt_set_sample_fmt(m_pSwrCtx, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
+			ret = swr_init(m_pSwrCtx);
+			if (ret < 0) {
+				AfxMessageBox(_T("swr_init error ret=%08x.\n"));
+				return ret;
+			}
+			int buf_size = avFrame->nb_samples*avFrame->channels * 2; /* the 2 means S16 */
+			m_pSwr_buf = new BYTE[buf_size];
+			m_swr_buf_len = buf_size;
 		}
 
-		*pts = swr_next_pts(m_pSwrCtx, *pts);
-		int ret = swr_convert(m_pSwrCtx, m_resampledBuffer, numSamples, (const uint8_t**)avFrame->extended_data, avFrame->nb_samples);
-		//length = double(ret) / double(this->frequency);
+		ret = swr_convert(m_pSwrCtx, &m_pSwr_buf, avFrame->nb_samples, (const uint8_t**)avFrame->extended_data, avFrame->nb_samples);
+		if (ret < 0) {
+			AfxMessageBox(_T("swr_convert error ret=%08x.\n"));
+			return ret;
+		}
 
-		int bufSize = av_samples_get_buffer_size(&m_resampleLineSize, numChannels, ret,
-			AV_SAMPLE_FMT_S16, 1);
-		if (bufSize > 0)
-			m_AudioRender->DSoundRender(m_resampledBuffer[0], bufSize);
+		m_AudioRender->XAudio2Render(m_pSwr_buf, m_swr_buf_len);
 
 		
-
-
-// 		size_t unpadded_linesize =
-// 			avFrame->nb_samples * av_get_bytes_per_sample((AVSampleFormat)avFrame->format);
-
-		// raw audio 데이터를 렌더링
-		/* Write the raw audio data samples of the first plane. */
-		//fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
-
-		// 오디오의 fps 계산 - 오디오 출력 타이밍에 영향
-		//double fps = av_q2d(avFormatCtx->streams[m_nAudioStreamIndex]->r_frame_rate) / 100000;
-		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.3;
-		Sleep(700 / fps - 1);
 	}
 
 	return decoded;
@@ -390,7 +370,7 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
 
 		// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
 		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.3;
-		Sleep(700 / fps - 1);
+		Sleep(950 / fps - 1);
 	}
 
 	return decoded;
