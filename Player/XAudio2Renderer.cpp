@@ -97,5 +97,6 @@ int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 
 void AudioRenderer::XAudio2Cleanup() {
 	m_pVoice->Stop();
+	CoUninitialize();
 }
 

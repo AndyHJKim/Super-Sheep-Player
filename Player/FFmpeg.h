@@ -16,6 +16,7 @@ extern "C" {
 #include <libswresample/swresample.h>
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/time.h>
 }
 #include "XAudio2Renderer.h"
 #pragma comment(lib, "swresample.lib")

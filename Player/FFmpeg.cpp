@@ -251,6 +251,7 @@ HRESULT CFFmpeg::Decoder()
 			{
 				// 비디오 디코딩
 				ret = DecodeVideoFrame(&gotFrame, 0);
+
 			}
 
 			if (ret < 0)
@@ -258,6 +259,10 @@ HRESULT CFFmpeg::Decoder()
 			avPacket.data += ret;
 			avPacket.size -= ret;
 		} while (avPacket.size > 0);
+		if (threadType == DECODE_VIDEO &&
+			avPacket.stream_index == m_nVideoStreamIndex)
+		
+		
 		av_packet_unref(&avPacket);
 	}
 
@@ -286,6 +291,7 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 {
 	int ret = 0;
 	int decoded = avPacket.size;
+	
 
 	// 오디오 프레임 디코딩
 	ret = avcodec_decode_audio4(avAudioCodecCtx, avFrame, gotFrame, &avPacket);
@@ -295,6 +301,7 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 		return ret;
 	}
 	decoded = FFMIN(ret, avPacket.size);
+
 
 	if (*gotFrame)
 	{
@@ -315,8 +322,8 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 				AfxMessageBox(_T("swr_init error ret=%08x.\n"));
 				return ret;
 			}
-			int buf_size = avFrame->nb_samples*avFrame->channels * 2; /* the 2 means S16 */
-			m_pSwr_buf = new BYTE[buf_size];
+			int buf_size = avFrame->nb_samples * avFrame->channels * 2; /* the 2 means S16 */
+			m_pSwr_buf = new unsigned char[buf_size];
 			m_swr_buf_len = buf_size;
 		}
 
@@ -325,10 +332,10 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 			AfxMessageBox(_T("swr_convert error ret=%08x.\n"));
 			return ret;
 		}
-
-		m_AudioRender->XAudio2Render(m_pSwr_buf, m_swr_buf_len);
-
 		
+		m_AudioRender->XAudio2Render(m_pSwr_buf, m_swr_buf_len);
+		int temp = avPacket.pts * av_q2d(avAudioStream->time_base) * 1000;
+		int i = temp;
 	}
 
 	return decoded;
@@ -351,8 +358,10 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
 		return ret;
 	}
 
+	
 	if (*gotFrame)
 	{
+		
 		if (avFrame->width != videoWidth || avFrame->height != videoHeight ||
 			avFrame->format != pixelFormat) {
 			AfxMessageBox(_T("ERROR: irregular input video frame size"));
@@ -367,12 +376,16 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
 		// 화면 세팅
 		AfxGetMainWnd()->GetClientRect(viewRect);
 		D3DVideoRender(*videoData, viewRect);
-
+			
 		// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
 		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.3;
 		Sleep(950 / fps - 1);
 	}
+	double getTime = av_gettime()/ 1000000;
 
+	avAudioCodecCtx->time_base;
+	double temp = avPacket.pts * av_q2d(avVideoStream->time_base) * 1000;
+	int i = temp;
 	return decoded;
 }
 
