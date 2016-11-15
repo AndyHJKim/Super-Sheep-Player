@@ -51,10 +51,7 @@ END_MESSAGE_MAP()
 
 CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_PLAYER_DIALOG, pParent)
- 	, m_pAudio(nullptr)
-	, m_pVideo(nullptr)
-	, m_pARThread(nullptr)
-	, m_pVRThread(nullptr)
+
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -208,8 +205,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 
 		// ENTER : 전체 화면/창모드 토글
 		case VK_RETURN:
-			if (m_pVRThread != nullptr)
-				m_pVRThread->SuspendThread();
+			
 			if (m_bIsFullScreen)
 			{
 				m_bIsFullScreen = false;
@@ -230,29 +226,26 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				SetMenu(NULL);
 				ShowWindow(SW_SHOWMAXIMIZED);
 			}
-			if (m_pVRThread != nullptr)
-				m_pVRThread->ResumeThread();
+		
 			return TRUE;
 
 		// SPACEBAR : 재생/일시정지 토글
 		case VK_SPACE:
-			if (m_pVideo != NULL)
+			if (m_pVDecoder->m_pVideo != NULL)
 			{
-				switch (m_pVideo->renderState)
+				switch (m_pVDecoder->m_pVideo->renderState)
 				{
 				case RENDER_STATE_STARTED:
- 					m_pVideo->renderState = RENDER_STATE_PAUSED;
+ 					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_PAUSED;
+					m_pADecoder->m_pAudio->XAudio2Pause();
 					m_pADThread->SuspendThread();
 					m_pVDThread->SuspendThread();
-					m_pARThread->SuspendThread();
-					m_pVRThread->SuspendThread();
 					break;
 				case RENDER_STATE_PAUSED:
- 					m_pVideo->renderState = RENDER_STATE_STARTED;
+ 					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
 					m_pADThread->ResumeThread();
 					m_pVDThread->ResumeThread();
-					m_pARThread->ResumeThread();
-					m_pVRThread->ResumeThread();
+					m_pADecoder->m_pAudio->XAudio2Resume();
 					break;
 				}
 			}
@@ -279,60 +272,10 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 
 	while (m_pDecoder->Decoder() >= 0)
 	{
-		if (m_pDecoder->decodeType == DECODE_AUDIO)
-		{
-			SetEvent(pDlg->m_hADEvent);
-			WaitForSingleObject(pDlg->m_hAREvent, INFINITE);
-		}
-		else if (m_pDecoder->decodeType == DECODE_VIDEO)
-		{
-			SetEvent(pDlg->m_hVDEvent);
-			WaitForSingleObject(pDlg->m_hVREvent, INFINITE);
-		}
+		
 	}
-
-	if(m_pDecoder->decodeType == DECODE_AUDIO)
-		CloseHandle(pDlg->m_hADEvent);
-	else if (m_pDecoder->decodeType == DECODE_VIDEO)
-		CloseHandle(pDlg->m_hVDEvent);
-	return 0;
-}
-
-
-
-// XAudio2 오디오 렌더러 스레드
-UINT CPlayerDlg::AudioRendererThread(LPVOID _method)
-{
-	AudioRenderer * m_pAudio = (AudioRenderer *)_method;
-	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
-
-	while (WaitForSingleObject(pDlg->m_hADEvent, INFINITE) == WAIT_OBJECT_0)
-	{
-		if (pDlg->m_pADecoder->avPacket.stream_index == pDlg->m_pADecoder->m_nAudioStreamIndex)
-			m_pAudio->XAudio2Render(pDlg->m_pADecoder->m_pSwr_buf, pDlg->m_pADecoder->m_swr_buf_len);
-		SetEvent(pDlg->m_hAREvent);
-	}
-
-	CloseHandle(pDlg->m_hAREvent);
-	return 0;
-}
-
-
-
-// D3D 비디오 렌더러 스레드
-UINT CPlayerDlg::D3DVideoRendererThread(LPVOID _method)
-{
-	CD3DRenderer * m_pVideo = (CD3DRenderer *)_method;
-	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
-
-	while (WaitForSingleObject(pDlg->m_hVDEvent, INFINITE) == WAIT_OBJECT_0)
-	{
-		if (pDlg->m_pVDecoder->avPacket.stream_index == pDlg->m_pVDecoder->m_nVideoStreamIndex)
-			m_pVideo->D3DVideoRender(*(pDlg->m_pVDecoder->videoData), pDlg->m_pVDecoder->viewRect);
-		SetEvent(pDlg->m_hVREvent);
-	}
-
-	CloseHandle(pDlg->m_hVREvent);
+	pDlg->DrawBlackScreen();
+	
 	return 0;
 }
 
@@ -376,34 +319,22 @@ void CPlayerDlg::OnOpenFile()
 		OnClose();
 		m_pADecoder	= new CFFmpeg(DECODE_AUDIO);
 		m_pVDecoder	= new CFFmpeg(DECODE_VIDEO);
-		m_pAudio	= new AudioRenderer();
-		m_pVideo	= new CD3DRenderer();
+		
 
 		if (FAILED(m_pADecoder->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 		if (FAILED(m_pVDecoder->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 
-		//DirectSound 초기화
-		m_pAudio->XAudio2Initialize(this->m_hWnd,
-			m_pADecoder->avAudioCodecCtx->channels, m_pADecoder->avAudioCodecCtx->sample_rate);
+		
 
 		// Direct3D 초기화
-		m_pVideo->renderState = RENDER_STATE_STARTED;
-		m_pVideo->D3DInitialize(this->m_hWnd,
-			m_pVDecoder->videoWidth, m_pVDecoder->videoHeight, m_pVDecoder->viewRect);
-
-		// 스레드 이벤트 핸들 초기화
-		m_hADEvent	= CreateEvent(NULL, FALSE, TRUE, NULL);
-		m_hVDEvent	= CreateEvent(NULL, FALSE, TRUE, NULL);
-		m_hAREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
-		m_hVREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
-
+		m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
+		
 		// 스레드 시작
 		m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
 		m_pVDThread = AfxBeginThread(FFmpegDecoderThread, m_pVDecoder);
- 		m_pARThread	= AfxBeginThread(AudioRendererThread, m_pAudio);
-		m_pVRThread	= AfxBeginThread(D3DVideoRendererThread, m_pVideo);
+ 	
 	}
 
 }
@@ -425,40 +356,22 @@ void CPlayerDlg::OnClose()
 		HANDLE hThread = m_pVDThread->m_hThread;
 		TerminateThread(hThread, 0);
 	}
-	if (m_pARThread != nullptr)
-	{
-		m_pARThread->SuspendThread();
-		HANDLE hThread = m_pARThread->m_hThread;
-		TerminateThread(hThread, 0);
-	}
-	if (m_pVRThread != nullptr)
-	{
-		m_pVRThread->SuspendThread();
-		HANDLE hThread = m_pVRThread->m_hThread;
-		TerminateThread(hThread, 0);
-	}
+	
 	if (m_pADecoder != nullptr)
 	{
+		m_pADecoder->m_pAudio->XAudio2Cleanup();
+		delete m_pADecoder->m_pAudio;
 		delete m_pADecoder;
 		m_pADecoder = nullptr;
 	}
 	if (m_pVDecoder != nullptr)
 	{
+		m_pVDecoder->m_pVideo->D3DCleanup();
+		delete m_pVDecoder->m_pVideo;
 		delete m_pVDecoder;
 		m_pVDecoder = nullptr;
 	}
-	if (m_pAudio != nullptr)
-	{
-		m_pAudio->XAudio2Cleanup();
-		delete m_pAudio;
-		m_pAudio = nullptr;
-	}
-	if (m_pVideo != nullptr)
-	{
-		m_pVideo->D3DCleanup();
-		delete m_pVideo;
-		m_pVideo = nullptr;
-	}
+	
 	
 	DrawBlackScreen();
 }

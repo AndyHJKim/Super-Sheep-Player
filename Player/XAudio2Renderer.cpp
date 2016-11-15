@@ -79,6 +79,7 @@ int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 	buffer.AudioBytes = bufSize;
 	buffer.pAudioData = m_dpBuf[m_buf_cnt];
 	ret = m_pVoice->SubmitSourceBuffer(&buffer);
+
 	if (FAILED(ret)) {
 		printf("error SubmitSourceBuffer ret=%d\n", ret);
 	}
@@ -102,3 +103,10 @@ void AudioRenderer::XAudio2Cleanup() {
 	CoUninitialize();
 }
 
+void AudioRenderer::XAudio2Pause() {
+	m_pVoice->Stop();
+}
+
+void AudioRenderer::XAudio2Resume() {
+	m_pVoice->Start();
+}

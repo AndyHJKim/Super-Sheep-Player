@@ -7,6 +7,8 @@
 #pragma warning(disable : 4996)
 #pragma warning(disable : 4819)
 
+#include "XAudio2Renderer.h"
+#include "D3DRenderer.h"
 
 // C++¿¡¼­ FFmpeg
 extern "C" {
@@ -71,6 +73,9 @@ public:
 	SwrContext *	m_pSwrCtx;
 	unsigned char * m_pSwr_buf;
 	int				m_swr_buf_len;
+
+	AudioRenderer *m_pAudio;
+	CD3DRenderer *m_pVideo;
 
 };
 

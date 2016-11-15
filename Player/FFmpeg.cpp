@@ -29,6 +29,8 @@ CFFmpeg::CFFmpeg(const int type)
 	, m_pSwr_buf(nullptr)
 	, m_swr_buf_len(NULL)
 	, decodeType(type)
+	, m_pVideo(nullptr)
+	, m_pAudio(nullptr)
 {
 	av_register_all();
 }
@@ -131,6 +133,25 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 	AfxGetMainWnd()->GetClientRect(viewRect);
 	videoWidth = avVideoStream->codec->width;
 	videoHeight = avVideoStream->codec->height;
+
+	switch (decodeType) {
+	case DECODE_AUDIO:
+		m_pAudio = new AudioRenderer();
+		//XAudio2 초기화
+		m_pAudio->XAudio2Initialize(AfxGetMainWnd()->GetSafeHwnd(),
+			avAudioCodecCtx->channels, avAudioCodecCtx->sample_rate);
+		break;
+	case DECODE_VIDEO:
+		m_pVideo = new CD3DRenderer();
+		// Direct3D 초기화
+		m_pVideo->D3DInitialize(AfxGetMainWnd()->GetSafeHwnd(),
+			videoWidth, videoHeight, viewRect);
+		break;
+	}
+	
+	
+
+	
 
 	return hr;
 }
@@ -314,6 +335,9 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 			AfxMessageBox(_T("swr_convert error ret=%08x.\n"));
 			return ret;
 		}
+
+		m_pAudio->XAudio2Render(m_pSwr_buf, m_swr_buf_len);
+		
 	}
 
 	audioDecoded = true;
@@ -355,6 +379,8 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
 
 		// 화면 세팅
  		AfxGetMainWnd()->GetClientRect(viewRect);
+
+		m_pVideo->D3DVideoRender(*(videoData), viewRect);
 
 		// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
 		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;

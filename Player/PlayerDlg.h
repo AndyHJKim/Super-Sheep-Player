@@ -3,10 +3,17 @@
 //
 
 #pragma once
-
+#include <queue>
 #include "FFmpeg.h"
 #include "XAudio2Renderer.h"
 #include "D3DRenderer.h"
+
+typedef struct AudioQueue {
+	unsigned char* audioBuf;
+	DWORD bufSize;
+};
+typedef std::queue<AudioQueue> Audio_Queue;
+
 
 
 // CPlayerDlg 대화 상자
@@ -31,18 +38,10 @@ protected:
 
 	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
 	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
-	AudioRenderer *	m_pAudio;		// FFmpeg 오디오 렌더링 객체
-	CD3DRenderer *	m_pVideo;		// FFmpeg 비디오 렌더링 객체
+
 
 	CWinThread *	m_pADThread;	// 오디오 디코더&디먹서 스레드 객체
 	CWinThread *	m_pVDThread;	// 비디오 디코더&디먹서 스레드 객체
-	CWinThread *	m_pARThread;	// 오디오 렌더러 스레드 객체
-	CWinThread *	m_pVRThread;	// 비디오 렌더러 스레드 객체
-
-	HANDLE		m_hADEvent;			// 오디오 디코더&디먹서 스레드 이벤트 핸들
-	HANDLE		m_hVDEvent;			// 비디오 디코더&디먹서 스레드 이벤트 핸들
-	HANDLE		m_hAREvent;			// 오디오 렌더러 스레드 이벤트 핸들
-	HANDLE		m_hVREvent;			// 비디오 렌더러 스레드 이벤트 핸들
 
 	CRect		m_rectPrevWindow;	// 윈도우 상태 좌표
 	int			m_nWindowded;		// 윈도우 상태 스타일
@@ -51,6 +50,8 @@ protected:
 	
 	CToolBar	m_dlgToolBar;		// 동영상 네비게이션 툴바
 	CRect		m_rectOldSize;		// 네비게이션 툴바 위치 조정
+
+
 
 	// 생성된 메시지 맵 함수
 	virtual BOOL OnInitDialog();

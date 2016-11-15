@@ -23,6 +23,7 @@ public:
 	void STDMETHODCALLTYPE OnBufferStart(void * context) {}
 	void STDMETHODCALLTYPE OnLoopEnd(void * context) {}
 	void STDMETHODCALLTYPE OnVoiceError(void * context, HRESULT Error) {}
+	
 };
 
 
@@ -35,6 +36,8 @@ public:		//	public 함수
 	bool XAudio2Initialize(HWND hwnd, int channels, int sample_rate);
 
 	int XAudio2Render(unsigned char *srcBuffer, DWORD bufSize);
+	void XAudio2Pause();
+	void XAudio2Resume();
 	void XAudio2Cleanup();
 
 private:	//	private 변수
