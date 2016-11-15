@@ -39,7 +39,7 @@
     <ClInclude Include="D3DRenderer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DSoundRenderer.h">
+    <ClInclude Include="XAudio2Renderer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -59,7 +59,7 @@
     <ClCompile Include="D3DRenderer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="DSoundRenderer.cpp">
+    <ClCompile Include="XAudio2Renderer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -75,6 +75,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\Player.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\toolbar1.bmp">
       <Filter>리소스 파일</Filter>
     </Image>
   </ItemGroup>

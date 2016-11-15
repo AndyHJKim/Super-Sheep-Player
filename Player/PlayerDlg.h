@@ -5,6 +5,7 @@
 #pragma once
 
 #include "FFmpeg.h"
+#include "XAudio2Renderer.h"
 #include "D3DRenderer.h"
 
 
@@ -28,22 +29,28 @@ public:
 protected:
 	HICON m_hIcon;
 
-	CFFmpeg *		m_pDecoder;		// FFmpeg 디코더&디먹서 객체
-//	CXAudio *		m_pAudio;		// FFmpeg 오디오 디코딩 객체
-	CD3DRenderer *	m_pVideo;		// FFmpeg 비디오 디코딩 객체
+	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
+	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
+	AudioRenderer *	m_pAudio;		// FFmpeg 오디오 렌더링 객체
+	CD3DRenderer *	m_pVideo;		// FFmpeg 비디오 렌더링 객체
 
-	CWinThread *	m_pDThread;		// 디코더&디먹서 스레드 객체
-//	CWinThread *	m_pARThread;	// 오디오 렌더러 스레드 객체
+	CWinThread *	m_pADThread;	// 오디오 디코더&디먹서 스레드 객체
+	CWinThread *	m_pVDThread;	// 비디오 디코더&디먹서 스레드 객체
+	CWinThread *	m_pARThread;	// 오디오 렌더러 스레드 객체
 	CWinThread *	m_pVRThread;	// 비디오 렌더러 스레드 객체
 
-	HANDLE	m_hDEvent;				// 디코더&디먹서 스레드 이벤트 핸들
-//	HANDLE	m_hAREvent;				// 오디오 렌더러 스레드 이벤트 핸들
-	HANDLE	m_hVREvent;				// 비디오 렌더러 스레드 이벤트 핸들
+	HANDLE		m_hADEvent;			// 오디오 디코더&디먹서 스레드 이벤트 핸들
+	HANDLE		m_hVDEvent;			// 비디오 디코더&디먹서 스레드 이벤트 핸들
+	HANDLE		m_hAREvent;			// 오디오 렌더러 스레드 이벤트 핸들
+	HANDLE		m_hVREvent;			// 비디오 렌더러 스레드 이벤트 핸들
 
-	CRect	m_rectPrevWindow;		// 윈도우 상태 좌표
-	int		m_nWindowded;			// 윈도우 상태 스타일
-	bool	m_bIsFullScreen;		// 전체화면 체크
-	CMenu *	m_dlgMenu;				// 전체화면 전환시 메뉴 객체 저장해 둠
+	CRect		m_rectPrevWindow;	// 윈도우 상태 좌표
+	int			m_nWindowded;		// 윈도우 상태 스타일
+	bool		m_bIsFullScreen;	// 전체화면 체크
+	CMenu *		m_dlgMenu;			// 전체화면 전환시 메뉴 객체 저장해 둠
+	
+	CToolBar	m_dlgToolBar;		// 동영상 네비게이션 툴바
+	CRect		m_rectOldSize;		// 네비게이션 툴바 위치 조정
 
 	// 생성된 메시지 맵 함수
 	virtual BOOL OnInitDialog();
@@ -55,7 +62,7 @@ protected:
 public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	static	UINT FFmpegDecoderThread(LPVOID _method);
-//	static	UINT ???AudioRendererThread(LPVOID _method);
+	static	UINT AudioRendererThread(LPVOID _method);
 	static	UINT D3DVideoRendererThread(LPVOID _method);
 
 	bool IsFullScreen() { return m_bIsFullScreen; }
@@ -67,4 +74,6 @@ public:
 	afx_msg void OnPlayPause();
 	afx_msg void OnFullscreen();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+
+	//void InitToolbar();
 };

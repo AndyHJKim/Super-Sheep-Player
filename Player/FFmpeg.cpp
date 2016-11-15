@@ -5,7 +5,6 @@
 #include "stdafx.h"
 #include "PlayerDlg.h"
 #include "FFmpeg.h"
-#include "D3DRenderer.h"
 
 
 
@@ -17,7 +16,7 @@ CRect CFFmpeg::viewRect = 0;
 
 
 // CFFmpeg 클래스 생성자
-CFFmpeg::CFFmpeg()
+CFFmpeg::CFFmpeg(const int type)
 	: avFormatCtx(nullptr)
 	, avAudioCodecCtx(nullptr)
 	, avVideoCodecCtx(nullptr)
@@ -26,6 +25,10 @@ CFFmpeg::CFFmpeg()
 	, avFrame(nullptr)
 	, m_nAudioStreamIndex(NULL)
 	, m_nVideoStreamIndex(NULL)
+	, m_pSwrCtx(nullptr)
+	, m_pSwr_buf(nullptr)
+	, m_swr_buf_len(NULL)
+	, decodeType(type)
 {
 	av_register_all();
 }
@@ -229,12 +232,12 @@ int CFFmpeg::Decoder()
 		AVPacket originalPacket = avPacket;
 		do
 		{
-			if (avPacket.stream_index == m_nAudioStreamIndex)
+			if (decodeType == DECODE_AUDIO && avPacket.stream_index == m_nAudioStreamIndex)
 			{
 				// 오디오 디코딩
-// 				ret = DecodeAudioFrame(&gotFrame, 0, &pts);
+ 				ret = DecodeAudioFrame(&gotFrame, 0, &pts);
 			}
-			else if (avPacket.stream_index == m_nVideoStreamIndex)
+			else if (decodeType == DECODE_VIDEO && avPacket.stream_index == m_nVideoStreamIndex)
 			{
 				// 비디오 디코딩
 				ret = DecodeVideoFrame(&gotFrame, 0);
@@ -246,15 +249,15 @@ int CFFmpeg::Decoder()
 			avPacket.size -= ret;
 		} while (avPacket.size > 0);
 
-		AVPacket * tmpPck = &avPacket;
-		av_init_packet(&avPacket);
-		avPacket.data = NULL;
-		avPacket.size = 0;
-		av_packet_unref(tmpPck);
-
-		AVFrame * tmpFrm = avFrame;
-		avFrame = av_frame_alloc();
-		av_frame_free(&tmpFrm);
+// 		AVPacket * tmpPck = &avPacket;
+// 		av_init_packet(&avPacket);
+// 		avPacket.data = NULL;
+// 		avPacket.size = 0;
+// 		av_packet_unref(tmpPck);
+// 
+// 		AVFrame * tmpFrm = avFrame;
+// 		avFrame = av_frame_alloc();
+// 		av_frame_free(&tmpFrm);
 
 // 		av_packet_unref(&avPacket);
 // 		av_frame_free(&avFrame);
@@ -271,6 +274,50 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 	int ret = 0;
 	int decoded = avPacket.size;
 
+	audioDecoded = false;
+
+	// 오디오 프레임 디코딩
+	ret = avcodec_decode_audio4(avAudioCodecCtx, avFrame, gotFrame, &avPacket);
+	if (ret < 0)
+	{
+		AfxMessageBox(_T("ERROR: decoding audio frame"));
+		return ret;
+	}
+	decoded = FFMIN(ret, avPacket.size);
+
+	if (*gotFrame)
+	{
+		if (m_pSwrCtx == NULL) {
+			m_pSwrCtx = swr_alloc();
+			if (m_pSwrCtx == NULL) {
+				AfxMessageBox(_T("swr_alloc error.\n"));
+				return -1;
+			}
+			av_opt_set_int(m_pSwrCtx, "in_channel_layout", avFrame->channel_layout, 0);
+			av_opt_set_int(m_pSwrCtx, "out_channel_layout", avFrame->channel_layout, 0);
+			av_opt_set_int(m_pSwrCtx, "in_sample_rate", avFrame->sample_rate, 0);
+			av_opt_set_int(m_pSwrCtx, "out_sample_rate", avFrame->sample_rate, 0);
+			av_opt_set_sample_fmt(m_pSwrCtx, "in_sample_fmt", (AVSampleFormat)avFrame->format, 0);
+			av_opt_set_sample_fmt(m_pSwrCtx, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
+			ret = swr_init(m_pSwrCtx);
+			if (ret < 0) {
+				AfxMessageBox(_T("swr_init error ret=%08x.\n"));
+				return ret;
+			}
+			int buf_size = avFrame->nb_samples*avFrame->channels * 2; /* the 2 means S16 */
+			m_pSwr_buf = new unsigned char[buf_size];
+			m_swr_buf_len = buf_size;
+		}
+
+		ret = swr_convert(m_pSwrCtx, &m_pSwr_buf, avFrame->nb_samples, (const uint8_t**)avFrame->extended_data, avFrame->nb_samples);
+		if (ret < 0) {
+			AfxMessageBox(_T("swr_convert error ret=%08x.\n"));
+			return ret;
+		}
+	}
+
+	audioDecoded = true;
+
 	return decoded;
 }
 
@@ -282,6 +329,8 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
 	HRESULT hr = S_OK;
 	int ret = 0;
 	int decoded = avPacket.size;
+
+	videoDecoded = false;
 
 	// 비디오 프레임 디코딩
 	ret = avcodec_decode_video2(avVideoCodecCtx, avFrame, gotFrame, &avPacket);
@@ -308,9 +357,11 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
  		AfxGetMainWnd()->GetClientRect(viewRect);
 
 		// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
-		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.3;
-		Sleep(1000 / fps - 1);
+		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
+		Sleep(900 / fps - 1);
 	}
+
+	videoDecoded = true;
 
 	return decoded;
 }

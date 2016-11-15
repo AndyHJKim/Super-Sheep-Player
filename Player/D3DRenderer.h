@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <stdio.h>
 #include <d3d9.h>
 
 
@@ -28,7 +27,9 @@ public:
 	HRESULT D3DVideoRender(UINT8* buffer, CRect docRect);
 	void D3DCleanup();
 
-public:
+	enum RENDER_STATE renderState;
+
+private:
 	CRITICAL_SECTION	m_critial;
 
 	IDirect3D9 *		m_pDirect3D9;
@@ -41,8 +42,6 @@ public:
 
 	ULONG	pixelWidth;
 	ULONG	pixelHeight;
-
-	enum RENDER_STATE renderState;
 
 	double	aspRatio;
 	const int bitPerPixel;

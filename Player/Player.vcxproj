@@ -97,7 +97,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>C:\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>winmm.lib;dxva2.lib;d3d9.lib;avcodec.lib;avformat.lib;avutil.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;dxva2.lib;d3d9.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -192,17 +192,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DRenderer.h" />
-    <ClInclude Include="DSoundRenderer.h" />
     <ClInclude Include="FFmpeg.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerDlg.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="XAudio2Renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DRenderer.cpp" />
-    <ClCompile Include="DSoundRenderer.cpp" />
     <ClCompile Include="FFmpeg.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="PlayerDlg.cpp" />
@@ -212,6 +211,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="XAudio2Renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Player.rc" />
@@ -221,6 +221,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\Player.ico" />
+    <Image Include="res\toolbar1.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

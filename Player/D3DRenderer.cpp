@@ -130,11 +130,10 @@ HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 
 	// 화면 비율 유지 설정
 	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp;
-	if (pDlg->IsFullScreen()
-		|| m_prevViewport.right != docRect.Width()
+	if (m_prevViewport.right != docRect.Width()
 		|| m_prevViewport.bottom != docRect.Height())
 	{
-		pDlg->DrawBlackScreen();
+ 		pDlg->DrawBlackScreen();
 		m_prevViewport.right = docRect.Width();
 		m_prevViewport.bottom = docRect.Height();
 	}

@@ -51,9 +51,9 @@ END_MESSAGE_MAP()
 
 CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_PLAYER_DIALOG, pParent)
-// 	, m_pAudio(nullptr)
+ 	, m_pAudio(nullptr)
 	, m_pVideo(nullptr)
-//	, m_pARThread(nullptr)
+	, m_pARThread(nullptr)
 	, m_pVRThread(nullptr)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -111,6 +111,32 @@ BOOL CPlayerDlg::OnInitDialog()
 	
 	// 초기화 작업
 	MoveWindow(NULL, NULL, 976, 599);
+
+// 	InitToolbar();
+
+// 	m_dlgToolBar.Create(this);
+// 	m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1);
+// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
+
+// 	if (!m_dlgToolBar.CreateEx(this, TBSTYLE_FLAT | TBSTYLE_LIST, WS_CHILD | WS_VISIBLE)
+// 		|| !m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1))
+// 	{
+// 		TRACE0("Failed to create toolbar\n");
+// 		return -1;
+// 	}
+// 	m_dlgToolBar.SetBarStyle(m_dlgToolBar.GetBarStyle()
+// 		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_GRIPPER | CBRS_FLYBY | CBRS_BOTTOM);
+// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
+// 
+// 	CToolBarCtrl& ctrbar = m_dlgToolBar.GetToolBarCtrl();
+// 	ctrbar.AddBitmap(1, IDB_PRINT);
+// 	m_dlgToolBar.SetButtonText(1, "인쇄");
+// 
+// 	ctrbar.AddBitmap(2, IDB_DOWN);
+// 	m_dlgToolBar.SetButtonText(2, "인증기데이터 읽기");
+// 
+// 	ctrbar.AddBitmap(3, IDB_UP); // 
+// 	m_dlgToolBar.SetButtonText(3, "인증기 출력");
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -216,14 +242,16 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				{
 				case RENDER_STATE_STARTED:
  					m_pVideo->renderState = RENDER_STATE_PAUSED;
-					m_pDThread->SuspendThread();
-					//m_pARThread->SuspendThread();
+					m_pADThread->SuspendThread();
+					m_pVDThread->SuspendThread();
+					m_pARThread->SuspendThread();
 					m_pVRThread->SuspendThread();
 					break;
 				case RENDER_STATE_PAUSED:
  					m_pVideo->renderState = RENDER_STATE_STARTED;
-					m_pDThread->ResumeThread();
-					//m_pARThread->ResumeThread();
+					m_pADThread->ResumeThread();
+					m_pVDThread->ResumeThread();
+					m_pARThread->ResumeThread();
 					m_pVRThread->ResumeThread();
 					break;
 				}
@@ -251,12 +279,41 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 
 	while (m_pDecoder->Decoder() >= 0)
 	{
-		SetEvent(pDlg->m_hDEvent);
-		WaitForSingleObject(pDlg->m_hVREvent, 0);
+		if (m_pDecoder->decodeType == DECODE_AUDIO)
+		{
+			SetEvent(pDlg->m_hADEvent);
+			WaitForSingleObject(pDlg->m_hAREvent, INFINITE);
+		}
+		else if (m_pDecoder->decodeType == DECODE_VIDEO)
+		{
+			SetEvent(pDlg->m_hVDEvent);
+			WaitForSingleObject(pDlg->m_hVREvent, INFINITE);
+		}
 	}
-	pDlg->OnClose();
 
-	CloseHandle(pDlg->m_hDEvent);
+	if(m_pDecoder->decodeType == DECODE_AUDIO)
+		CloseHandle(pDlg->m_hADEvent);
+	else if (m_pDecoder->decodeType == DECODE_VIDEO)
+		CloseHandle(pDlg->m_hVDEvent);
+	return 0;
+}
+
+
+
+// XAudio2 오디오 렌더러 스레드
+UINT CPlayerDlg::AudioRendererThread(LPVOID _method)
+{
+	AudioRenderer * m_pAudio = (AudioRenderer *)_method;
+	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
+
+	while (WaitForSingleObject(pDlg->m_hADEvent, INFINITE) == WAIT_OBJECT_0)
+	{
+		if (pDlg->m_pADecoder->avPacket.stream_index == pDlg->m_pADecoder->m_nAudioStreamIndex)
+			m_pAudio->XAudio2Render(pDlg->m_pADecoder->m_pSwr_buf, pDlg->m_pADecoder->m_swr_buf_len);
+		SetEvent(pDlg->m_hAREvent);
+	}
+
+	CloseHandle(pDlg->m_hAREvent);
 	return 0;
 }
 
@@ -268,11 +325,10 @@ UINT CPlayerDlg::D3DVideoRendererThread(LPVOID _method)
 	CD3DRenderer * m_pVideo = (CD3DRenderer *)_method;
 	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
 
-	while (pDlg->m_hDEvent != NULL)
+	while (WaitForSingleObject(pDlg->m_hVDEvent, INFINITE) == WAIT_OBJECT_0)
 	{
-		WaitForSingleObject(pDlg->m_hDEvent, 1000);
-		m_pVideo->D3DVideoRender(
-			*(pDlg->m_pDecoder->videoData), pDlg->m_pDecoder->viewRect);
+		if (pDlg->m_pVDecoder->avPacket.stream_index == pDlg->m_pVDecoder->m_nVideoStreamIndex)
+			m_pVideo->D3DVideoRender(*(pDlg->m_pVDecoder->videoData), pDlg->m_pVDecoder->viewRect);
 		SetEvent(pDlg->m_hVREvent);
 	}
 
@@ -286,8 +342,8 @@ UINT CPlayerDlg::D3DVideoRendererThread(LPVOID _method)
 void CPlayerDlg::DrawBlackScreen()
 {
 	CDC * pDC = AfxGetMainWnd()->GetDC();
- 	AfxGetMainWnd()->GetClientRect(m_pDecoder->viewRect);
-	pDC->FillSolidRect(m_pDecoder->viewRect, RGB(0, 0, 0));
+ 	AfxGetMainWnd()->GetClientRect(m_pVDecoder->viewRect);
+	pDC->FillSolidRect(m_pVDecoder->viewRect, RGB(0, 0, 0));
 	AfxGetMainWnd()->ReleaseDC(pDC);
 }
 
@@ -316,30 +372,37 @@ void CPlayerDlg::OnOpenFile()
 	{
 		filePath = pDlg.GetPathName();
 
-		// 초기화
-		OnClose();
-		DrawBlackScreen();
-
 		// 미디어 소스 열기 + 초기화
-		m_pDecoder	= new CFFmpeg();
+		OnClose();
+		m_pADecoder	= new CFFmpeg(DECODE_AUDIO);
+		m_pVDecoder	= new CFFmpeg(DECODE_VIDEO);
+		m_pAudio	= new AudioRenderer();
 		m_pVideo	= new CD3DRenderer();
 
-		if (FAILED(m_pDecoder->OpenMediaSource(filePath)))
+		if (FAILED(m_pADecoder->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
+		if (FAILED(m_pVDecoder->OpenMediaSource(filePath)))
+			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
+
+		//DirectSound 초기화
+		m_pAudio->XAudio2Initialize(this->m_hWnd,
+			m_pADecoder->avAudioCodecCtx->channels, m_pADecoder->avAudioCodecCtx->sample_rate);
 
 		// Direct3D 초기화
 		m_pVideo->renderState = RENDER_STATE_STARTED;
 		m_pVideo->D3DInitialize(this->m_hWnd,
-			m_pDecoder->videoWidth, m_pDecoder->videoHeight, m_pDecoder->viewRect);
+			m_pVDecoder->videoWidth, m_pVDecoder->videoHeight, m_pVDecoder->viewRect);
 
 		// 스레드 이벤트 핸들 초기화
-		m_hDEvent	= CreateEvent(NULL, FALSE, TRUE, NULL);
-//		m_hAREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
+		m_hADEvent	= CreateEvent(NULL, FALSE, TRUE, NULL);
+		m_hVDEvent	= CreateEvent(NULL, FALSE, TRUE, NULL);
+		m_hAREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
 		m_hVREvent	= CreateEvent(NULL, FALSE, FALSE, NULL);
 
 		// 스레드 시작
-		m_pDThread	= AfxBeginThread(FFmpegDecoderThread, m_pDecoder);
-// 		m_pARThread	= AfxBeginThread(, m_pAudio);
+		m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
+		m_pVDThread = AfxBeginThread(FFmpegDecoderThread, m_pVDecoder);
+ 		m_pARThread	= AfxBeginThread(AudioRendererThread, m_pAudio);
 		m_pVRThread	= AfxBeginThread(D3DVideoRendererThread, m_pVideo);
 	}
 
@@ -350,35 +413,53 @@ void CPlayerDlg::OnOpenFile()
 // 파일 → 파일 닫기 메뉴
 void CPlayerDlg::OnClose()
 {
-	if (m_pDThread != nullptr)
+	if (m_pADThread != nullptr)
 	{
-		HANDLE hThread = m_pDThread->m_hThread;
-		TerminateThread(hThread, 1);
+		m_pADThread->SuspendThread();
+		HANDLE hThread = m_pADThread->m_hThread;
+		TerminateThread(hThread, 0);
 	}
-// 	if (m_pARThread != nullptr)
-// 	{
-// 		HANDLE hThread = m_pARThread->m_hThread;
-// 		TerminateThread(hThread, 1);
-// 	}
+	if (m_pVDThread != nullptr)
+	{
+		m_pVDThread->SuspendThread();
+		HANDLE hThread = m_pVDThread->m_hThread;
+		TerminateThread(hThread, 0);
+	}
+	if (m_pARThread != nullptr)
+	{
+		m_pARThread->SuspendThread();
+		HANDLE hThread = m_pARThread->m_hThread;
+		TerminateThread(hThread, 0);
+	}
 	if (m_pVRThread != nullptr)
 	{
+		m_pVRThread->SuspendThread();
 		HANDLE hThread = m_pVRThread->m_hThread;
-		TerminateThread(hThread, 1);
+		TerminateThread(hThread, 0);
+	}
+	if (m_pADecoder != nullptr)
+	{
+		delete m_pADecoder;
+		m_pADecoder = nullptr;
+	}
+	if (m_pVDecoder != nullptr)
+	{
+		delete m_pVDecoder;
+		m_pVDecoder = nullptr;
+	}
+	if (m_pAudio != nullptr)
+	{
+		m_pAudio->XAudio2Cleanup();
+		delete m_pAudio;
+		m_pAudio = nullptr;
 	}
 	if (m_pVideo != nullptr)
 	{
+		m_pVideo->D3DCleanup();
 		delete m_pVideo;
 		m_pVideo = nullptr;
 	}
-// 	if (m_pAudio != nullptr)
-// 	{
-// 		m_pAudio->~CFFmpeg();
-// 	}
-	if (m_pDecoder != nullptr)
-	{
-		delete m_pDecoder;
-		m_pDecoder = nullptr;
-	}
+	
 	DrawBlackScreen();
 }
 
@@ -412,8 +493,53 @@ void CPlayerDlg::OnFullscreen()
 void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-	//DrawBlackScreen();
+// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
 }
 
 
 
+// void CPlayerDlg::InitToolbar()
+// {
+// 	if (!m_dlgToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_BOTTOM
+// 		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
+// 		!m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1))
+// 	{
+// 		TRACE0("Failed to Create Dialog Toolbar\n");
+// 		EndDialog(IDCANCEL);
+// 	}
+// 	CRect    rcClientNew; // New Client Rect with Tollbar Added
+// 	GetClientRect(m_rectOldSize); // Retrive the Old Client WindowSize
+// 
+// 								// Called to reposition and resize control bars in the client area of a window
+// 								// The reposQuery FLAG does not really traw the Toolbar.  It only does the calculations.
+// 								// And puts the new ClientRect values in rcClientNew so we can do the rest of the Math.
+// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0, reposQuery, rcClientNew);
+// 
+// 	// All of the Child Windows (Controls) now need to be moved so the Tollbar does not cover them up.
+// 	// Offest to move all child controls after adding Tollbar
+// 	CPoint ptOffset(rcClientNew.left - m_rectOldSize.left, rcClientNew.top - m_rectOldSize.top);
+// 
+// 	CRect    rcChild;
+// 	CWnd*    pwndChild = GetWindow(GW_CHILD);  //Handle to the Dialog Controls
+// 
+// 	while (pwndChild) // Cycle through all child controls
+// 	{
+// 
+// 		pwndChild->GetWindowRect(rcChild); //  Get the child control RECT
+// 		ScreenToClient(rcChild);
+// 		rcChild.OffsetRect(ptOffset); // Changes the Child Rect by the values of the claculated offset
+// 		pwndChild->MoveWindow(rcChild, FALSE); // Move the Child Control
+// 		pwndChild = pwndChild->GetNextWindow();
+// 
+// 	}
+// 
+// 	CRect    rcWindow;
+// 	GetWindowRect(rcWindow); // Get the RECT of the Dialog
+// 	rcWindow.right += m_rectOldSize.Width() - rcClientNew.Width(); // Increase width to new Client Width
+// 	rcWindow.bottom += m_rectOldSize.Height() - rcClientNew.Height(); // Increase height to new Client Height
+// 	MoveWindow(rcWindow, FALSE); // Redraw Window
+// 
+// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
+// 
+// 
+// }

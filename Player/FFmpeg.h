@@ -17,15 +17,19 @@ extern "C" {
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
 }
-#include "DSoundRenderer.h"
-#pragma comment(lib, "swresample.lib")
+
+
+// 디코더 스레드 타입
+#define DECODE_AUDIO 0
+#define DECODE_VIDEO 1
 
 
 // FFmpeg 클래스
 class CFFmpeg
 {
 public:
-	CFFmpeg();
+// 	CFFmpeg();
+	CFFmpeg(const int type);
 	~CFFmpeg();
 
 	HRESULT OpenMediaSource(CString & filePath);
@@ -46,8 +50,13 @@ public:
 	AVFrame *	avFrame;
 	AVPacket	avPacket;
 
+	const int decodeType;
+
 	int m_nAudioStreamIndex;
 	int m_nVideoStreamIndex;
+
+	bool audioDecoded;
+	bool videoDecoded;
 
 	enum AVPixelFormat pixelFormat;
 
@@ -59,7 +68,9 @@ public:
 	static int videoHeight;
 	static CRect viewRect;
 
-
+	SwrContext *	m_pSwrCtx;
+	unsigned char * m_pSwr_buf;
+	int				m_swr_buf_len;
 
 };
 
