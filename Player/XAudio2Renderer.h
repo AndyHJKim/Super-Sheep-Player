@@ -39,6 +39,8 @@ public:		//	public 함수
 	void XAudio2Pause();
 	void XAudio2Resume();
 	void XAudio2Cleanup();
+	void XAudio2Pause();
+	void XAudio2Resume();
 
 private:	//	private 변수
 	IXAudio2 *m_pAudio;
