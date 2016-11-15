@@ -102,3 +102,11 @@ void AudioRenderer::XAudio2Cleanup() {
 	CoUninitialize();
 }
 
+
+void AudioRenderer::XAudio2Pause() {
+	m_pVoice->Stop();
+}
+
+void AudioRenderer::XAudio2Resume() {
+	m_pVoice->Start();
+}

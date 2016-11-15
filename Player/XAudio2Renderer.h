@@ -36,6 +36,8 @@ public:		//	public 함수
 
 	int XAudio2Render(unsigned char *srcBuffer, DWORD bufSize);
 	void XAudio2Cleanup();
+	void XAudio2Pause();
+	void XAudio2Resume();
 
 private:	//	private 변수
 	IXAudio2 *m_pAudio;

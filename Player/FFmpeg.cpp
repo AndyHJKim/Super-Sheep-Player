@@ -357,8 +357,8 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
  		AfxGetMainWnd()->GetClientRect(viewRect);
 
 		// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
-		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
-		Sleep(900 / fps - 1);
+ 		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
+ 		Sleep(850 / fps - 1);
 	}
 
 	videoDecoded = true;

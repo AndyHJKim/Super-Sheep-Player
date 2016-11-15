@@ -242,17 +242,19 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				{
 				case RENDER_STATE_STARTED:
  					m_pVideo->renderState = RENDER_STATE_PAUSED;
+					m_pAudio->XAudio2Pause();
 					m_pADThread->SuspendThread();
-					m_pVDThread->SuspendThread();
+ 					m_pVDThread->SuspendThread();
 					m_pARThread->SuspendThread();
-					m_pVRThread->SuspendThread();
+ 					m_pVRThread->SuspendThread();
 					break;
 				case RENDER_STATE_PAUSED:
- 					m_pVideo->renderState = RENDER_STATE_STARTED;
+					m_pVideo->renderState = RENDER_STATE_STARTED;
 					m_pADThread->ResumeThread();
-					m_pVDThread->ResumeThread();
+ 					m_pVDThread->ResumeThread();
 					m_pARThread->ResumeThread();
-					m_pVRThread->ResumeThread();
+ 					m_pVRThread->ResumeThread();
+					m_pAudio->XAudio2Resume();
 					break;
 				}
 			}
