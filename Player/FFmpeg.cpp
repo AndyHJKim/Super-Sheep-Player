@@ -150,7 +150,6 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 	}
 	
 	
-
 	
 
 	return hr;
@@ -339,7 +338,7 @@ int CFFmpeg::DecodeAudioFrame(int * gotFrame, int cached, int64_t *pts)
 		m_pAudio->XAudio2Render(m_pSwr_buf, m_swr_buf_len);
 		
 	}
-
+	int temp = av_q2d(avAudioStream->time_base);
 	audioDecoded = true;
 
 	return decoded;
@@ -386,7 +385,7 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
  		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
  		Sleep(850 / fps - 1);
 	}
-
+	
 	videoDecoded = true;
 
 	return decoded;

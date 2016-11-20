@@ -36,6 +36,7 @@ bool AudioRenderer::XAudio2Initialize(HWND hwnd, int channels, int sample_rate) 
 	{
 		return false;
 	}
+	
 
 	this->channels = channels;
 	this->sample_rate = sample_rate;
@@ -57,16 +58,16 @@ int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 		ret = m_pAudio->CreateSourceVoice(
 			&m_pVoice,
 			&format,
-			0,                          // UINT32 Flags = 0,
-			XAUDIO2_DEFAULT_FREQ_RATIO, // float MaxFrequencyRatio = XAUDIO2_DEFAULT_FREQ_RATIO,
-			&callback                   // IXAudio2VoiceCallback *pCallback = NULL,
+			0,                          
+			XAUDIO2_DEFAULT_FREQ_RATIO,
+			&callback                  
 			);
 		if (FAILED(ret)) {
 			printf("error CreateSourceVoice ret=%d\n", ret);
 		}
 		m_pVoice->Start();
 	}
-
+	
 	if (m_dpBuf == NULL) {
 		m_dpBuf = new unsigned char*[2];
 		m_dpBuf[0] = new unsigned char[bufSize];
@@ -83,7 +84,7 @@ int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 	if (FAILED(ret)) {
 		printf("error SubmitSourceBuffer ret=%d\n", ret);
 	}
-
+	
 	if (m_first_submit) {
 		m_first_submit = false;
 	}
