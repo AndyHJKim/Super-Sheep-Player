@@ -40,7 +40,6 @@ public:		//	public 함수
 	void XAudio2Resume();
 	void XAudio2Cleanup();
 
-
 private:	//	private 변수
 	IXAudio2 *m_pAudio;
 	IXAudio2SourceVoice *m_pVoice;
