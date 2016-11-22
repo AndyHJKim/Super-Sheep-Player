@@ -41,15 +41,15 @@ CFFmpeg::CFFmpeg(const int type)
 
 
 // CFFmpeg 클래스 소멸자
-CFFmpeg::~CFFmpeg()
-{
-	av_packet_unref(&avPacket);
-	av_frame_free(&avAudioFrame);
-	av_frame_free(&avVideoFrame);
-	avcodec_free_context(&avAudioCodecCtx);		// Audio Codec Context 반환
-	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
-	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
-}
+// CFFmpeg::~CFFmpeg()
+// {
+// 	av_packet_unref(&avPacket);
+// 	av_frame_free(&avAudioFrame);
+// 	av_frame_free(&avVideoFrame);
+// 	avcodec_free_context(&avAudioCodecCtx);		// Audio Codec Context 반환
+// 	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
+// 	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
+// }
 
 
 
@@ -626,7 +626,18 @@ double CFFmpeg::synchronize_video(AVFrame *src_frame, double pts) {
 double CFFmpeg::get_audio_clock() {
 	double pts;
 
-	pts = audio_clock; 
+	pts = audio_clock;
 
 	return pts;
+}
+
+void CFFmpeg::cleanUp()
+{
+	av_packet_unref(&avPacket);
+	av_frame_free(&avAudioFrame);
+	av_frame_free(&avVideoFrame);
+	avcodec_free_context(&avAudioCodecCtx);		// Audio Codec Context 반환
+	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
+	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
+
 }

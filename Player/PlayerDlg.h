@@ -60,6 +60,9 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
+	afx_msg void OnBnClickedButtonPlay();
+	afx_msg void OnBnClickedButtonPause();
+	afx_msg void OnBnClickedButtonStop();
 
 	CFFmpeg *		m_pCFFmpeg;	// FFmpeg 비디오 디코더&디먹서 객체
 
@@ -76,7 +79,14 @@ public:
 	CButton m_btnPause;
 	CButton m_btnStop;
 
-	static RENDER_STATE video;
+	static RENDER_STATE eVideo;
+	clock_t strtTick;
+	clock_t currTick;
+	clock_t progTick;
+
+	double m_dVideoDuration;
+	double progTime;
+	CStatic m_sPlaytime;
 };
 
 

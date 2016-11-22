@@ -70,8 +70,8 @@ HRESULT CD3DRenderer::D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight, RE
 		&m_pDirect3DSurfaceRender,
 		NULL);
 
-	m_prevViewport.right = viewRect.right;
-	m_prevViewport.bottom = viewRect.bottom;
+	m_prevViewport.right = viewRect.right - 1;
+	m_prevViewport.bottom = viewRect.bottom - 1;
 
 	return hr;
 
@@ -136,25 +136,25 @@ HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 		m_prevViewport.bottom = docRect.Height();
 	}
 
-	m_dstViewport.right = docRect.Width();
-	m_dstViewport.bottom = docRect.Height();
+	m_dstViewport.right = docRect.Width() - 1;
+	m_dstViewport.bottom = docRect.Height() - 1;
 
 	double scrRatio = (double)m_dstViewport.right / m_dstViewport.bottom;
 	if (aspRatio > scrRatio)
 	{
 		int vHeight = docRect.Width() / aspRatio;
 		m_dstViewport.top = (docRect.Height() - vHeight) / 2;
-		m_dstViewport.left = 0;
-		m_dstViewport.right = docRect.Width();
+		m_dstViewport.left = 1;
+		m_dstViewport.right = docRect.Width() - 1;
 		m_dstViewport.bottom = (docRect.Height() - vHeight) / 2 + vHeight;
 	}
 	else if (aspRatio <= scrRatio)
 	{
 		int vWidth = docRect.Height() * aspRatio;
-		m_dstViewport.top = 0;
+		m_dstViewport.top = 1;
 		m_dstViewport.left = (docRect.Width() - vWidth) / 2;
 		m_dstViewport.right = (docRect.Width() - vWidth) / 2 + vWidth;
-		m_dstViewport.bottom = docRect.Height();
+		m_dstViewport.bottom = docRect.Height() - 1;
 	}
 
 	// 화면에 표시하기 위한 최종 과정

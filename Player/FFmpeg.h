@@ -64,7 +64,8 @@ class CFFmpeg
 public:
 // 	CFFmpeg();
 	CFFmpeg(const int type);
-	~CFFmpeg();
+// 	~CFFmpeg();
+	void cleanUp();
 
 	HRESULT OpenMediaSource(CString & filePath);
 	HRESULT InitCodecContext(int * streamIdx, AVCodecContext ** decoderCtx, AVFormatContext * formatCtx, enum AVMediaType mediaType);
@@ -108,33 +109,33 @@ public:
 
 	enum AVPixelFormat pixelFormat;
 
-	static int videoWidth;
-	static int videoHeight;
-	static CRect viewRect;
+	static int		videoWidth;
+	static int		videoHeight;
+	static CRect	viewRect;
 
 	SwrContext *	m_pSwrCtx;
-	unsigned char * m_pSwr_buf;
+	unsigned char *	m_pSwr_buf;
 	int				m_swr_buf_len;
 
-	AudioRenderer *m_pAudio;
-	CD3DRenderer *m_pVideo;
+	AudioRenderer *	m_pAudio;
+	CD3DRenderer *	m_pVideo;
 
 	
-	double          audio_clock;
-	PacketQueue     audioq;
+	double			audio_clock;
+	PacketQueue		audioq;
 	AVPacket		audio_pkt;
-	uint8_t         *audio_pkt_data;
-	int             audio_pkt_size;
-	double          frame_timer;
-	double          frame_last_pts;
-	double          frame_last_delay;
-	double          video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
-	PacketQueue     videoq;
+	uint8_t *		audio_pkt_data;
+	int				audio_pkt_size;
+	double			frame_timer;
+	double			frame_last_pts;
+	double			frame_last_delay;
+	double			video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
+	PacketQueue		videoq;
 
-	VideoPicture    pictq[VIDEO_PICTURE_QUEUE_SIZE];
-	int             pictq_size, pictq_rindex, pictq_windex;
-	std::mutex       pictq_mutex;
-	std::condition_variable       pictq_cond;
+	VideoPicture	pictq[VIDEO_PICTURE_QUEUE_SIZE];
+	int				pictq_size, pictq_rindex, pictq_windex;
+	std::mutex					pictq_mutex;
+	std::condition_variable		pictq_cond;
 
 	std::thread audioDecodeThread;
 	std::thread videoDecodeThread;

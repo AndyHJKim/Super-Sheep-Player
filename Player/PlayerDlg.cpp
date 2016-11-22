@@ -47,7 +47,7 @@ END_MESSAGE_MAP()
 // CPlayerDlg 대화 상자
 
 
-RENDER_STATE CPlayerDlg::video = RENDER_STATE_STOPPED;
+RENDER_STATE CPlayerDlg::eVideo = RENDER_STATE_STOPPED;
 
 
 CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
@@ -66,6 +66,7 @@ void CPlayerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BUTTON_PLAY, m_btnPlay);
 	DDX_Control(pDX, IDC_BUTTON_PAUSE, m_btnPause);
 	DDX_Control(pDX, IDC_BUTTON_STOP, m_btnStop);
+	DDX_Control(pDX, IDC_STATIC_PLAYTIME, m_sPlaytime);
 }
 
 BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
@@ -80,6 +81,9 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_WM_SIZE()
 	ON_WM_TIMER()
 	ON_WM_GETMINMAXINFO()
+	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CPlayerDlg::OnBnClickedButtonPlay)
+	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CPlayerDlg::OnBnClickedButtonPause)
+	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
 END_MESSAGE_MAP()
 
 
@@ -117,9 +121,16 @@ BOOL CPlayerDlg::OnInitDialog()
 	
 
 	// 초기화 작업
-	MoveWindow(NULL, NULL, 976, 599);
+	MoveWindow(NULL, NULL, 960, 640);
 	GdiplusStartup(&m_GdiplusToken, &m_GdiplusStartupInput, NULL);
 
+	//GetDlgItem(IDC_STATIC_FRAME);
+	GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_STATIC_PLAYTIME)->SendMessage(WM_KILLFOCUS, NULL);
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -181,6 +192,7 @@ void CPlayerDlg::OnPaint()
 		GetDlgItem(IDC_BUTTON_PLAY)->ShowWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_PAUSE)->ShowWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_STOP)->ShowWindow(FALSE);
+		GetDlgItem(IDC_STATIC_PLAYTIME)->ShowWindow(FALSE);
 		return;
 	}
 
@@ -190,16 +202,20 @@ void CPlayerDlg::OnPaint()
 	GetDlgItem(IDC_BUTTON_PLAY)->ShowWindow(TRUE);
 	GetDlgItem(IDC_BUTTON_PAUSE)->ShowWindow(TRUE);
 	GetDlgItem(IDC_BUTTON_STOP)->ShowWindow(TRUE);
+	GetDlgItem(IDC_STATIC_PLAYTIME)->ShowWindow(TRUE);
 
 
+	OnPlayPause();
 	pDC->FillSolidRect(picRect, RGB(0, 0, 0));
-
-	Graphics graphics(this->m_hWnd);
-	Image image(L"res\\SuperSheepFlying.png");
-	graphics.DrawImage(&image, (picRect.right / 2 - 128), (picRect.bottom / 2 - 128));
-
+	if (eVideo == RENDER_STATE_STOPPED)
+	{
+		Graphics graphics(this->m_hWnd);
+		Image image(L"res\\SuperSheepFlying.png");
+		graphics.DrawImage(&image, (picRect.right / 2 - 128), (picRect.bottom / 2 - 128));
+	}
 	pDC->FillSolidRect(toolbarRect, RGB(240, 240, 240));
 	AfxGetMainWnd()->ReleaseDC(pDC);
+	OnPlayPause();
 
 }
 
@@ -217,7 +233,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 {
 	switch (pMsg->message)
 	{
-	// 키 이벤트
+	// 키 이벤트 처리
 	case WM_KEYDOWN:
 		switch (pMsg->wParam)
 		{
@@ -227,7 +243,6 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 
 		// ENTER : 전체 화면/창모드 토글
 		case VK_RETURN:
-			
 			if (m_bIsFullScreen)
 			{
 				m_bIsFullScreen = false;
@@ -248,35 +263,48 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				SetMenu(NULL);
 				ShowWindow(SW_SHOWMAXIMIZED);
 			}
-		
 			return TRUE;
 
 		// SPACEBAR : 재생/일시정지 토글
 		case VK_SPACE:
-			if (video == RENDER_STATE_STARTED)
+			if (eVideo == RENDER_STATE_STARTED)
 			{
-				video = RENDER_STATE_PAUSED;
+				eVideo = RENDER_STATE_PAUSED;
 				m_pCFFmpeg->m_pAudio->XAudio2Pause();
 				KillTimer(0);
 				SuspendThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 				SuspendThread(m_pCFFmpeg->videoDecodeThread.native_handle());
-				m_pPlayThread->SuspendThread();
-			} 
-			else if (video == RENDER_STATE_PAUSED)
+				SuspendThread(m_pPlayThread->m_hThread);
+				progTick = currTick;
+			}
+			else if (eVideo == RENDER_STATE_PAUSED)
 			{
-				video = RENDER_STATE_STARTED;
+				eVideo = RENDER_STATE_STARTED;
 				m_pCFFmpeg->m_pAudio->XAudio2Resume();
-				//m_pCFFmpeg->video_refresh_timer();
+				m_pCFFmpeg->frame_timer = av_gettime() / 1000000.0;
 				SetTimer(0, 1, NULL);
 				ResumeThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 				ResumeThread(m_pCFFmpeg->videoDecodeThread.native_handle());
-				m_pPlayThread->ResumeThread();
+				ResumeThread(m_pPlayThread->m_hThread);
+				strtTick = clock();
 			}
 			break;
 
 		default:
 			break;
 		}
+	// 키 이벤트 처리 끝
+
+	// 마우스 이벤트 처리
+	case WM_MOUSEFIRST:
+		// 컨트롤 포커스 해제
+		GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+		break;
+	//마우스 이벤트 처리 끝
 
 	default:
 		break;
@@ -328,16 +356,34 @@ void CPlayerDlg::OnOpenFile()
 		filePath = pDlg.GetPathName();
 
 		// 미디어 소스 열기 + 초기화
-		OnClose();	
+		OnClose();
 		m_pCFFmpeg	= new CFFmpeg(DECODE_VIDEO);
 
 		if (FAILED(m_pCFFmpeg->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 		
-		// 스레드 시작
-		video = RENDER_STATE_STARTED;
+		// 재생 시작
+		eVideo = RENDER_STATE_STARTED;
+		m_btnPause.EnableWindow(TRUE);
+		m_btnStop.EnableWindow(TRUE);
+		m_sliderSeek.EnableWindow(TRUE);
+
 		m_pPlayThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
+
+		m_dVideoDuration =
+			av_q2d(m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->time_base)
+			* m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->duration;
+
+		CString strDur;
+		strDur.Format(_T("00:00:00 / %02d:%02d:%02d"),
+			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
+			(int)m_dVideoDuration%60);
+		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
+		m_sliderSeek.SetPos(0);
+		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
+		strtTick = clock();
+		SetTimer(1, 300, NULL);
 	}
 
 }
@@ -346,23 +392,42 @@ void CPlayerDlg::OnOpenFile()
 
 // 파일 → 파일 닫기 메뉴
 void CPlayerDlg::OnClose()
-{	
+{
+	eVideo = RENDER_STATE_STOPPED;
 	if (m_pPlayThread != nullptr)
 	{
-		m_pPlayThread->SuspendThread();
-		HANDLE hThread = m_pPlayThread->m_hThread;
-		TerminateThread(hThread, 0);
+		m_pCFFmpeg->m_pAudio->XAudio2Pause();
+		KillTimer(0);
+		SuspendThread(m_pCFFmpeg->audioDecodeThread.native_handle());
+		SuspendThread(m_pCFFmpeg->videoDecodeThread.native_handle());
+		SuspendThread(m_pPlayThread->m_hThread);
+
+		TerminateThread(m_pCFFmpeg->audioDecodeThread.native_handle(), 0);
+		TerminateThread(m_pCFFmpeg->videoDecodeThread.native_handle(), 0);
+		TerminateThread(m_pPlayThread->m_hThread, 0);
+		m_pPlayThread = nullptr;
 	}
-		
+
 	if (m_pCFFmpeg != nullptr)
 	{
+		m_pCFFmpeg->m_pAudio->XAudio2Cleanup();
 		m_pCFFmpeg->m_pVideo->D3DCleanup();
-		delete m_pCFFmpeg->m_pVideo;
-		delete m_pCFFmpeg;
+// 		delete m_pCFFmpeg->m_pAudio;
+// 		delete m_pCFFmpeg->m_pVideo;
+// 		delete m_pCFFmpeg;
 		m_pCFFmpeg = nullptr;
+
+		m_btnPause.EnableWindow(FALSE);
+		m_btnStop.EnableWindow(FALSE);
+		m_sliderSeek.EnableWindow(FALSE);
+		m_sliderSeek.SetPos(0);
+		m_sPlaytime.SetWindowTextW(_T("00:00:00 / 00:00:00"));
+
+		progTick = currTick = 0;
+		KillTimer(1);
+
+		Invalidate();
 	}
-	
-	Invalidate();
 }
 
 
@@ -398,6 +463,7 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 	
 	if (IsWindow(m_sFrame.m_hWnd))
 	{
+		OnPlayPause();
 		picRect.right = cx;
 		picRect.bottom = cy - 80;
 		m_sFrame.MoveWindow(picRect);
@@ -406,6 +472,7 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 		toolbarRect.left = 0;
 		toolbarRect.right = cx;
 		toolbarRect.bottom = cy;
+		OnPlayPause();
 	}
 
 	if (IsWindow(m_sliderSeek.m_hWnd))
@@ -438,17 +505,41 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
 	}
 
+	if (IsWindow(m_sPlaytime.m_hWnd))
+	{
+		GetDlgItem(IDC_STATIC_PLAYTIME)->ShowWindow(FALSE);
+		GetDlgItem(IDC_STATIC_PLAYTIME)->SetWindowPos(NULL, 120, picRect.bottom + 42, 120, 15, 0);
+		GetDlgItem(IDC_STATIC_PLAYTIME)->ShowWindow(TRUE);
+	}
+
 	InvalidateRect(picRect);
 }
 
 
 
-// 오디오-비디오 싱크를 위한 타이머 설정
+// 오디오-비디오 싱크를 위한 타이머 설정 및 탐색 슬라이더 처리
 void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 {
-	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	m_pCFFmpeg->video_refresh_timer();
+	if (nIDEvent == 0)
+	{
+		m_pCFFmpeg->video_refresh_timer();
+	}
+	else if (eVideo == RENDER_STATE_STARTED && nIDEvent == 1)
+	{
+		currTick = clock() - strtTick + progTick;
+		m_sliderSeek.SetPos(currTick);
+		CString strDur;
+		strDur.Format(_T("%02d:%02d:%02d / %02d:%02d:%02d"),
+			currTick/3600000000, currTick/60000 % 60, currTick/1000 % 60,
+			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
+			(int)m_dVideoDuration%60);
+		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
 
+		if (currTick / 3600000000 == (int)m_dVideoDuration / 3600
+			&& currTick / 60000 % 60 == (int)m_dVideoDuration / 60 % 60
+			&& currTick / 1000 % 60 == (int)m_dVideoDuration % 60)
+			OnClose();
+	}
 
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -458,8 +549,60 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 // 다이얼로그 최소 크기 설정
 void CPlayerDlg::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
 {
-	lpMMI->ptMinTrackSize.x = 300;
-	lpMMI->ptMinTrackSize.y = 300;
+	lpMMI->ptMinTrackSize.x = 400;
+	lpMMI->ptMinTrackSize.y = 400;
 
 	CDialogEx::OnGetMinMaxInfo(lpMMI);
 }
+
+
+
+// 네비게이션 재생 버튼
+void CPlayerDlg::OnBnClickedButtonPlay()
+{
+	if (m_pCFFmpeg == nullptr)
+		OnOpenFile();
+
+	if (eVideo == RENDER_STATE_PAUSED)
+	{
+		PostMessage(WM_KEYDOWN, VK_SPACE);
+
+		GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+}
+
+
+
+// 네비게이션 일시정지 버튼
+void CPlayerDlg::OnBnClickedButtonPause()
+{
+	if (eVideo == RENDER_STATE_STARTED)
+	{
+		PostMessage(WM_KEYDOWN, VK_SPACE);
+
+		GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+}
+
+
+
+// 네비게이션 정지 버튼
+void CPlayerDlg::OnBnClickedButtonStop()
+{
+	OnClose();
+
+	GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+	GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+}
+
