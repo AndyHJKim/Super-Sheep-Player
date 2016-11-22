@@ -97,7 +97,8 @@ public:
 
 	AVStream *	avAudioStream;
 	AVStream *	avVideoStream;
-	AVFrame *	avFrame;
+	AVFrame *	avVideoFrame;
+	AVFrame *   avAudioFrame;
 	AVPacket	avPacket;
 
 	const int decodeType;
