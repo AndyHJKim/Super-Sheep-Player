@@ -575,12 +575,9 @@ void CFFmpeg::video_refresh_timer() {
 			viewRect = pDlg->picRect;
 
 			if (pDlg->IsFullScreen())
-			{
 				pDlg->GetClientRect(viewRect);
-				m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
-			}
-			else
-				m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
+			
+			m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
 
 			/* update queue for next picture! */
 			if (++pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {

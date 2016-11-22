@@ -11,13 +11,6 @@
 #include "afxcmn.h"
 
 
-typedef struct AudioQueue {
-	unsigned char* audioBuf;
-	DWORD bufSize;
-};
-typedef std::queue<AudioQueue> Audio_Queue;
-
-
 // CPlayerDlg 대화 상자
 class CPlayerDlg : public CDialogEx
 {

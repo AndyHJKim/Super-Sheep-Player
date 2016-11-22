@@ -255,9 +255,22 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 		case VK_SPACE:
 			if (video == RENDER_STATE_STARTED)
 			{
+				video = RENDER_STATE_PAUSED;
+				m_pCFFmpeg->m_pAudio->XAudio2Pause();
+				KillTimer(0);
+				SuspendThread(m_pCFFmpeg->audioDecodeThread.native_handle());
+				SuspendThread(m_pCFFmpeg->videoDecodeThread.native_handle());
+				m_pPlayThread->SuspendThread();
 			} 
-			else if (video == RENDER_STATE_STOPPED)
+			else if (video == RENDER_STATE_PAUSED)
 			{
+				video = RENDER_STATE_STARTED;
+				m_pCFFmpeg->m_pAudio->XAudio2Resume();
+				//m_pCFFmpeg->video_refresh_timer();
+				SetTimer(0, 1, NULL);
+				ResumeThread(m_pCFFmpeg->audioDecodeThread.native_handle());
+				ResumeThread(m_pCFFmpeg->videoDecodeThread.native_handle());
+				m_pPlayThread->ResumeThread();
 			}
 			break;
 
@@ -291,8 +304,6 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 
 
 
-
-
 // 파일 → 파일 열기 메뉴
 void CPlayerDlg::OnOpenFile()
 {
@@ -319,17 +330,12 @@ void CPlayerDlg::OnOpenFile()
 		// 미디어 소스 열기 + 초기화
 		OnClose();	
 		m_pCFFmpeg	= new CFFmpeg(DECODE_VIDEO);
-		
 
 		if (FAILED(m_pCFFmpeg->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
-
-		
-
-		// Direct3D 초기화
-//		m_pCFFmpeg->m_pVideo->renderState = RENDER_STATE_STARTED;
 		
 		// 스레드 시작
+		video = RENDER_STATE_STARTED;
 		m_pPlayThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
 	}

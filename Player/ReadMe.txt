@@ -67,28 +67,3 @@ Player.manifest
 
 /////////////////////////////////////////////////////////////////////////////
 
-
-// D3D 화면 크기 변화시 화질 열화 방지 (출력 크기 재설정)
-void D3DReset(int width, int height)
-{
-	D3DPRESENT_PARAMETERS  d3dpp;
-
-	ZeroMemory(&d3dpp, sizeof(d3dpp));
-	d3dpp.BackBufferWidth = width;
-	d3dpp.BackBufferHeight = height;
-	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
-
-// 	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp;
-// 	pDlg->DrawBlackScreen();
-
-	m_pDirect3DDevice->Reset(&d3dpp);
-}
-
-
-
-	// 재생 마치고 검은색 배경 그리기
-	CDC * pDC = AfxGetMainWnd()->GetDC();
-	AfxGetMainWnd()->GetClientRect(m_pDecoder->viewRect);
-	pDC->FillSolidRect(m_pDecoder->viewRect, RGB(0, 0, 0));
-	AfxGetMainWnd()->ReleaseDC(pDC);
