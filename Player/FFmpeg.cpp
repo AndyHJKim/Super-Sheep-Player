@@ -29,7 +29,6 @@ CFFmpeg::CFFmpeg(const int type)
 	, m_pSwrCtx(nullptr)
 	, m_pSwr_buf(nullptr)
 	, m_swr_buf_len(NULL)
-	, decodeType(type)
 	, m_pVideo(nullptr)
 	, m_pAudio(nullptr)
 	, pictq_windex(0)
@@ -122,7 +121,6 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 				AfxMessageBox(_T("ERROR: allocating raw video buffer"));
 				hr = E_FAIL;
 			}
-			videoBuffersize = ret;
 		}
 	}
 
@@ -143,22 +141,16 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 	videoWidth = avVideoStream->codec->width;
 	videoHeight = avVideoStream->codec->height;
 
-	/*switch (decodeType) {
-	case DECODE_AUDIO:*/
-		m_pAudio = new AudioRenderer();
-		//XAudio2 초기화
-		m_pAudio->XAudio2Initialize(AfxGetMainWnd()->GetSafeHwnd(),
-			avAudioCodecCtx->channels, avAudioCodecCtx->sample_rate);
-		//break;
-	//case DECODE_VIDEO:
-		m_pVideo = new CD3DRenderer();
-		// Direct3D 초기화
-		m_pVideo->D3DInitialize(AfxGetMainWnd()->GetSafeHwnd(),
-			videoWidth, videoHeight, viewRect);
-		//break;
-	//}
-	
 
+	m_pAudio = new AudioRenderer();
+	//XAudio2 초기화
+	m_pAudio->XAudio2Initialize(AfxGetMainWnd()->GetSafeHwnd(),
+		avAudioCodecCtx->channels, avAudioCodecCtx->sample_rate);
+
+	m_pVideo = new CD3DRenderer();
+	// Direct3D 초기화
+	m_pVideo->D3DInitialize(AfxGetMainWnd()->GetSafeHwnd(),
+		videoWidth, videoHeight, viewRect);
 
 	return hr;
 }
@@ -263,13 +255,10 @@ int CFFmpeg::Decoder()
 	frame_last_delay = 40e-3;
 	avVideoCodecCtx->get_buffer2 = get_buffer;
 
-	std::thread audioDecodeThread(threadAudio, this);
-	//audioDecodeThread.join();
-	std::thread videoDecodeThread(threadVideo, this);
+	audioDecodeThread = std::thread(threadAudio, this);
+	videoDecodeThread = std::thread(threadVideo, this);
 
 
-
-	
 		// 프레임 읽기
 	while (1)
 	{
@@ -280,24 +269,6 @@ int CFFmpeg::Decoder()
 		}
 
 
-		//do
-		//{
-		//	if (avPacket.stream_index == m_nAudioStreamIndex)
-		//	{
-		//		// 오디오 디코딩
-	//			ret = DecodeAudioFrame(&gotFrame, 0, &pts);
-		//	}
-		//	else if (avPacket.stream_index == m_nVideoStreamIndex)
-		//	{
-		//		// 비디오 디코딩
-		//		ret = DecodeVideoFrame(&gotFrame, 0);
-		//	}
-
-		//	if (ret < 0)
-		//		break;
-		//	avPacket.data += ret;
-		//	avPacket.size -= ret;
-		//} while (avPacket.size > 0);
 		if ((proc = av_read_frame(avFormatCtx, &avPacket)) >= 0) {
 			if (avPacket.stream_index == m_nVideoStreamIndex) {
 				packet_queue_put(&videoq, &avPacket);
@@ -309,20 +280,6 @@ int CFFmpeg::Decoder()
 				av_free_packet(&avPacket);
 			}
 		}
-		
-		
-// 		AVPacket * tmpPck = &avPacket;
-// 		av_init_packet(&avPacket);
-// 		avPacket.data = NULL;
-// 		avPacket.size = 0;
-// 		av_packet_unref(tmpPck);
-// 
-// 		AVFrame * tmpFrm = avFrame;
-// 		avFrame = av_frame_alloc();
-// 		av_frame_free(&tmpFrm);
-
-// 		av_packet_unref(&avPacket);
-// 		av_frame_free(&avFrame);
 	}
 	return proc;
 }
@@ -337,7 +294,6 @@ int CFFmpeg::DecodeAudioFrame()
 	int decoded = avPacket.size;
 	int *gotFrame = nullptr;
 	double pts;
-	audioDecoded = false;
 
 	while (audio_pkt.size > 0)
 	{
@@ -346,11 +302,6 @@ int CFFmpeg::DecodeAudioFrame()
 		int decoded = avPacket.size;
 		int gotFrame;
 
-		audioDecoded = false;
-
-		/*AVPacket avPacket;
-		packet_queue_get(&audioq, &avPacket, 1);
-		*/
 		// 오디오 프레임 디코딩
 		ret = avcodec_decode_audio4(avAudioCodecCtx, avAudioFrame, &gotFrame, &audio_pkt);
 		if (ret < 0)
@@ -399,17 +350,10 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.size -= ret;
 
 		pts = audio_clock;
-		//*pts_ptr = pts;
 		int n = 2 * avAudioStream->codec->channels;
 		audio_clock += (double)m_swr_buf_len /
 			(double)(n * avAudioStream->codec->sample_rate);
-
-		//av_frame_free(&avFrame);
 	}
-
-
-	/*if (audio_pkt.data)
-		av_free_packet(&audio_pkt);*/
 
 	/* next packet */
 	if (packet_queue_get(&audioq, &audio_pkt, 1) < 0) {
@@ -437,42 +381,9 @@ int CFFmpeg::DecodeVideoFrame()
 	AVPacket video_pkt;
 	double pts;
 
-	videoDecoded = false;
-
-	//// 비디오 프레임 디코딩
-	//ret = avcodec_decode_video2(avVideoCodecCtx, avFrame, &gotFrame, &avPacket);
-	//if (ret < 0)
-	//{
-	//	AfxMessageBox(_T("ERROR: decoding video frame"));
-	//	return ret;
-	//}
-
-	//if (gotFrame)
-	//{
-	//	if (avFrame->width != videoWidth || avFrame->height != videoHeight ||
-	//		avFrame->format != pixelFormat) {
-	//		AfxMessageBox(_T("ERROR: irregular input video frame size"));
-	//		return -1;
-	//	}
-	//	
-	//	// 임시 버퍼에 raw video 데이터를 저장
-	//	av_image_copy(videoData, videoLinesize,
-	//		(const uint8_t **)(avFrame->data), avFrame->linesize,
-	//		pixelFormat, videoWidth, videoHeight);
-
-	//	// 화면 세팅
- //		AfxGetMainWnd()->GetClientRect(viewRect);
-
-	//	m_pVideo->D3DVideoRender(*(videoData), viewRect);
-
-	//	// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
- //		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
- //		Sleep(850 / fps - 1);
-	//}
 	
 	while (1) {
 		if (packet_queue_get(&videoq, &video_pkt, 1) < 0) {
-			// means we quit getting packets
 			break;
 		}
 		pts = 0;
@@ -498,7 +409,6 @@ int CFFmpeg::DecodeVideoFrame()
 		pts *= av_q2d(avVideoStream->time_base);
 
 
-
 		if (gotFrame)
 		{
 			pts = synchronize_video(avVideoFrame, pts);
@@ -512,32 +422,22 @@ int CFFmpeg::DecodeVideoFrame()
 			while (pictq_size >= VIDEO_PICTURE_QUEUE_SIZE) {
 				pictq_cond.wait(lock);
 			}
-			//lock.unlock();
+
 			// 임시 버퍼에 raw video 데이터를 저장
 			av_image_copy(pictq[pictq_windex].videoData, pictq[pictq_windex].videoLinesize,
 				(const uint8_t **)(avVideoFrame->data), avVideoFrame->linesize,
 				pixelFormat, videoWidth, videoHeight);
 			pictq[pictq_windex].pts = pts;
-			//lock.lock();
+
 			if (++pictq_windex == VIDEO_PICTURE_QUEUE_SIZE) {
 				pictq_windex = 0;
 			}
 
 			pictq_size++;
 			lock.unlock();
-
-			//// 화면 세팅
-			//AfxGetMainWnd()->GetClientRect(viewRect);
-
-			//m_pVideo->D3DVideoRender(*(videoData), viewRect);
-
-			//// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
-			//double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
-			//Sleep(850 / fps - 1);
 		}
 		av_free_packet(&video_pkt);
 	}
-	videoDecoded = true;
 	av_free(avVideoFrame);
 	return decoded;
 }
@@ -565,7 +465,6 @@ int CFFmpeg::packet_queue_put(PacketQueue *q, AVPacket *pkt) {
 	q->nb_packets++;
 	q->size += pkt1->pkt.size;
 	q->cond->notify_one();
-	//q->mutex->unlock();
 	
 	return 0;
 }
@@ -579,13 +478,7 @@ int CFFmpeg::packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
 	std::unique_lock<std::mutex> lock(*q->mutex);
 
 
-	for (;;) {
-
-		/*if (global_video_state->quit) {
-			ret = -1;
-			break;
-		}*/
-
+	while (1) {
 		pkt1 = q->first_pkt;
 		if (pkt1) {
 			q->first_pkt = pkt1->next;
@@ -603,9 +496,7 @@ int CFFmpeg::packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
 			break;
 		}
 		else {
-			//xtime time = { 1, 1000 };
 			q->cond->wait(lock);
-			//continue;
 		}
 	}
 
@@ -619,18 +510,16 @@ void CFFmpeg::packet_queue_init(PacketQueue *q) {
 }
 
 int CFFmpeg::threadAudio(CFFmpeg *ffmpeg) {
-	while (1) {
-		ffmpeg->DecodeAudioFrame();
+	while (ffmpeg->DecodeAudioFrame() >= 0) {
+		
 	}
 	return 1;
 }
 
 int CFFmpeg::threadVideo(CFFmpeg * ffmpeg) {
-
 	while (1) {
 		ffmpeg->DecodeVideoFrame();
 	}
-
 	return 1;
 }
 
@@ -704,7 +593,7 @@ int CFFmpeg::get_buffer(struct AVCodecContext *c, AVFrame *pic, int flag) {
 	int ret = avcodec_default_get_buffer2(c, pic, NULL);
 	uint64_t *pts = (uint64_t *)av_malloc(sizeof(uint64_t));
 	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp()->m_pMainWnd;
-	*pts = pDlg->m_pVDecoder->global_video_pkt_pts;
+	*pts = pDlg->m_pCFFmpeg->global_video_pkt_pts;
 	pic->opaque = pts;
 	return ret;
 }
@@ -730,18 +619,8 @@ double CFFmpeg::synchronize_video(AVFrame *src_frame, double pts) {
 
 double CFFmpeg::get_audio_clock() {
 	double pts;
-	int hw_buf_size, bytes_per_sec, n;
 
-	pts = audio_clock; /* maintained in the audio thread */
-	//hw_buf_size = audio_buf_size - audio_buf_index;
-	//bytes_per_sec = 0;
-	/*n = avAudioStream->codec->channels * 2;
-	if (avAudioStream) {
-		bytes_per_sec =avAudioStream->codec->sample_rate * n;
-	}
-	if (bytes_per_sec) {
-		pts -= (double)hw_buf_size / bytes_per_sec;
-	}*/
+	pts = audio_clock; 
 
 	return pts;
 }
