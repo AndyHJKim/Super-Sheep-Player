@@ -11,7 +11,6 @@
 #define new DEBUG_NEW
 #endif
 
-
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
@@ -47,6 +46,8 @@ END_MESSAGE_MAP()
 
 // CPlayerDlg 대화 상자
 
+
+RENDER_STATE CPlayerDlg::video = RENDER_STATE_STOPPED;
 
 
 CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
@@ -165,7 +166,32 @@ void CPlayerDlg::OnPaint()
 		CDialogEx::OnPaint();
 	}
 
+
+	// 화면 크기 변경시 출력 영역 계산 및 레터박스 처리
 	CDC * pDC = AfxGetMainWnd()->GetDC();
+	if (m_bIsFullScreen)
+	{
+		CRect fullRect = NULL;
+		GetWindowRect(fullRect);
+		pDC->FillSolidRect(fullRect, RGB(0, 0, 0));
+
+		GetDlgItem(IDC_STATIC_FRAME)->ShowWindow(FALSE);
+		GetDlgItem(IDC_SLIDER_SEEK)->ShowWindow(FALSE);
+		GetDlgItem(IDC_SLIDER_VOLUME)->ShowWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_PLAY)->ShowWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_PAUSE)->ShowWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_STOP)->ShowWindow(FALSE);
+		return;
+	}
+
+	GetDlgItem(IDC_STATIC_FRAME)->ShowWindow(TRUE);
+	GetDlgItem(IDC_SLIDER_SEEK)->ShowWindow(TRUE);
+	GetDlgItem(IDC_SLIDER_VOLUME)->ShowWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_PLAY)->ShowWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_PAUSE)->ShowWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_STOP)->ShowWindow(TRUE);
+
+
 	pDC->FillSolidRect(picRect, RGB(0, 0, 0));
 
 	Graphics graphics(this->m_hWnd);
@@ -227,23 +253,11 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 
 		// SPACEBAR : 재생/일시정지 토글
 		case VK_SPACE:
-			if (m_pVDecoder->m_pVideo != NULL)
+			if (video == RENDER_STATE_STARTED)
 			{
-				switch (m_pVDecoder->m_pVideo->renderState)
-				{
-				case RENDER_STATE_STARTED:
- 					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_PAUSED;
-					m_pADecoder->m_pAudio->XAudio2Pause();
-					m_pADThread->SuspendThread();
-					m_pVDThread->SuspendThread();
-					break;
-				case RENDER_STATE_PAUSED:
- 					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
-					m_pADThread->ResumeThread();
-					m_pVDThread->ResumeThread();
-					m_pADecoder->m_pAudio->XAudio2Resume();
-					break;
-				}
+			} 
+			else if (video == RENDER_STATE_STOPPED)
+			{
 			}
 			break;
 
@@ -283,16 +297,6 @@ UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method) {
 	//}
 
 	return 0;
-}
-
-
-// 검은색 배경 그리기
-void CPlayerDlg::DrawBlackScreen()
-{
-	CDC * pDC = AfxGetMainWnd()->GetDC();
- 	AfxGetMainWnd()->GetClientRect(m_pVDecoder->viewRect);
-	pDC->FillSolidRect(m_pVDecoder->viewRect, RGB(0, 0, 0));
-	AfxGetMainWnd()->ReleaseDC(pDC);
 }
 
 
@@ -338,6 +342,9 @@ void CPlayerDlg::OnOpenFile()
 		
 		// 스레드 시작
 		//m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
+
+		video = RENDER_STATE_STARTED;
+
 		m_pVDThread = AfxBeginThread(FFmpegDecoderThread, m_pVDecoder);
 		m_pAudioDecodeThread = AfxBeginThread(FFmpegAudioDecodeThread, m_pVDecoder);
 		SetTimer(0, 40, NULL);
@@ -455,7 +462,7 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
 	}
 
-	Invalidate();
+	InvalidateRect(picRect);
 }
 
 

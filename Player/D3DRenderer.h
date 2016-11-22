@@ -7,15 +7,6 @@
 #include <d3d9.h>
 
 
-// 플레이어 재생 상태
-enum RENDER_STATE {
-	RENDER_STATE_STARTED = 1,
-	RENDER_STATE_STOPPED,
-	RENDER_STATE_PAUSED,
-	//RENDER_STATE_SHUTDOWN
-};
-
-
 // D3D Renderer 클래스
 class CD3DRenderer
 {

@@ -66,7 +66,6 @@ public:
 	static  UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method);
 
 	bool IsFullScreen() { return m_bIsFullScreen; }
-	void DrawBlackScreen();
 
 	afx_msg void OnOpenFile();
 	afx_msg void OnClose();
@@ -92,4 +91,15 @@ public:
 	CButton m_btnPlay;
 	CButton m_btnPause;
 	CButton m_btnStop;
+
+	static RENDER_STATE video;
+};
+
+
+// 플레이어 재생 상태
+enum RENDER_STATE {
+	RENDER_STATE_STARTED = 1,
+	RENDER_STATE_STOPPED,
+	RENDER_STATE_PAUSED,
+	//RENDER_STATE_SHUTDOWN
 };

@@ -139,7 +139,8 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 		}
 	}
 
-	AfxGetMainWnd()->GetClientRect(viewRect);
+	CPlayerDlg * pMainDlg = (CPlayerDlg*)::AfxGetMainWnd();
+	viewRect = pMainDlg->picRect;
 	videoWidth = avVideoStream->codec->width;
 	videoHeight = avVideoStream->codec->height;
 
@@ -680,9 +681,17 @@ void CFFmpeg::video_refresh_timer() {
 			}
 			AfxGetMainWnd()->SetTimer(0, (int)(actual_delay * 1000 + 0.5), NULL);
 			/* show the picture! */
-			AfxGetMainWnd()->GetClientRect(viewRect);
+			//AfxGetMainWnd()->GetClientRect(viewRect);
+			CPlayerDlg * pDlg = (CPlayerDlg*)::AfxGetMainWnd();
+			viewRect = pDlg->picRect;
 
-			m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
+			if (pDlg->IsFullScreen())
+			{
+				pDlg->GetClientRect(viewRect);
+				m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
+			}
+			else
+				m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
 
 			/* update queue for next picture! */
 			if (++pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
