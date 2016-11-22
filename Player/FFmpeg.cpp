@@ -293,7 +293,6 @@ int CFFmpeg::DecodeAudioFrame()
 	int ret = 0;
 	int decoded = avPacket.size;
 	int *gotFrame = nullptr;
-	double pts;
 
 	while (audio_pkt.size > 0)
 	{
@@ -349,7 +348,6 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.data += ret;
 		audio_pkt.size -= ret;
 
-		pts = audio_clock;
 		audio_clock += (double)avAudioFrame->nb_samples /
 			(double)avAudioStream->codec->sample_rate;
 	}
