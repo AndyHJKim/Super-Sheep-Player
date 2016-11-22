@@ -71,6 +71,7 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_COMMAND(IDM_PLAY_PAUSE, &CPlayerDlg::OnPlayPause)
 	ON_COMMAND(IDM_FULLSCREEN, &CPlayerDlg::OnFullscreen)
 	ON_WM_SIZE()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -272,13 +273,22 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 
 	while (m_pDecoder->Decoder() >= 0)
 	{
-		
+
 	}
 	pDlg->DrawBlackScreen();
 	
 	return 0;
 }
 
+UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method) {
+	CFFmpeg * m_pDecoder = (CFFmpeg *)_method;
+	//while (m_pDecoder->DecodeAudioFrame()>=0)
+	//{
+	m_pDecoder->DecodeAudioFrame();
+	//}
+
+	return 0;
+}
 
 
 // 검은색 배경 그리기
@@ -317,23 +327,25 @@ void CPlayerDlg::OnOpenFile()
 
 		// 미디어 소스 열기 + 초기화
 		OnClose();
-		m_pADecoder	= new CFFmpeg(DECODE_AUDIO);
+		//m_pADecoder	= new CFFmpeg(DECODE_AUDIO);
 		m_pVDecoder	= new CFFmpeg(DECODE_VIDEO);
 		
 
-		if (FAILED(m_pADecoder->OpenMediaSource(filePath)))
-			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
+		/*	if (FAILED(m_pADecoder->OpenMediaSource(filePath)))
+				AfxMessageBox(_T("ERROR: OpenMediaSource function call"));*/
 		if (FAILED(m_pVDecoder->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 
 		
 
 		// Direct3D 초기화
-		m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
+//		m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
 		
 		// 스레드 시작
-		m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
+		//m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
 		m_pVDThread = AfxBeginThread(FFmpegDecoderThread, m_pVDecoder);
+		m_pAudioDecodeThread = AfxBeginThread(FFmpegAudioDecodeThread, m_pVDecoder);
+		SetTimer(0, 40, NULL);
  	
 	}
 
@@ -456,3 +468,13 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 // 
 // 
 // }
+
+
+void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	m_pVDecoder->video_refresh_timer();
+
+
+	CDialogEx::OnTimer(nIDEvent);
+}

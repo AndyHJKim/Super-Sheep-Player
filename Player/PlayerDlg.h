@@ -35,11 +35,12 @@ public:
 // 구현입니다.
 protected:
 	HICON m_hIcon;
-
+	
 	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
-	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
+	//CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
 
-
+	CWinThread *	m_pVideoDecodeThread;
+	CWinThread *	m_pAudioDecodeThread;
 	CWinThread *	m_pADThread;	// 오디오 디코더&디먹서 스레드 객체
 	CWinThread *	m_pVDThread;	// 비디오 디코더&디먹서 스레드 객체
 
@@ -65,6 +66,8 @@ public:
 	static	UINT FFmpegDecoderThread(LPVOID _method);
 	static	UINT AudioRendererThread(LPVOID _method);
 	static	UINT D3DVideoRendererThread(LPVOID _method);
+	static  UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method);
+
 
 	bool IsFullScreen() { return m_bIsFullScreen; }
 	void DrawBlackScreen();
@@ -77,4 +80,8 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 
 	void InitToolbar();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+
+
+	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
 };
