@@ -158,5 +158,6 @@ public:
 	std::thread      video_tid;
 
 	uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
+	
 };
 

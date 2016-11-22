@@ -742,5 +742,6 @@ double CFFmpeg::get_audio_clock() {
 	if (bytes_per_sec) {
 		pts -= (double)hw_buf_size / bytes_per_sec;
 	}*/
+
 	return pts;
 }
