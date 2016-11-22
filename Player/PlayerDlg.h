@@ -7,13 +7,15 @@
 #include "FFmpeg.h"
 #include "XAudio2Renderer.h"
 #include "D3DRenderer.h"
+#include "afxwin.h"
+#include "afxcmn.h"
+
 
 typedef struct AudioQueue {
 	unsigned char* audioBuf;
 	DWORD bufSize;
 };
 typedef std::queue<AudioQueue> Audio_Queue;
-
 
 
 // CPlayerDlg 대화 상자
@@ -36,8 +38,8 @@ public:
 protected:
 	HICON m_hIcon;
 	
-	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
-	//CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
+// 	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
+// 	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
 
 	CWinThread *	m_pVideoDecodeThread;
 	CWinThread *	m_pAudioDecodeThread;
@@ -49,11 +51,6 @@ protected:
 	bool		m_bIsFullScreen;	// 전체화면 체크
 	CMenu *		m_dlgMenu;			// 전체화면 전환시 메뉴 객체 저장해 둠
 	
-	CToolBar	m_dlgToolBar;		// 동영상 네비게이션 툴바
-	CRect		m_rectOldSize;		// 네비게이션 툴바 위치 조정
-
-
-
 	// 생성된 메시지 맵 함수
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -68,7 +65,6 @@ public:
 	static	UINT D3DVideoRendererThread(LPVOID _method);
 	static  UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method);
 
-
 	bool IsFullScreen() { return m_bIsFullScreen; }
 	void DrawBlackScreen();
 
@@ -78,10 +74,22 @@ public:
 	afx_msg void OnPlayPause();
 	afx_msg void OnFullscreen();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
-
-	void InitToolbar();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
 
-
+	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
 	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
+
+	CRect picRect;		// 영상 영역
+	CRect toolbarRect;	// 툴바 영역
+
+	GdiplusStartupInput m_GdiplusStartupInput;	// 리소스 출력에 사용
+	ULONG_PTR			m_GdiplusToken;			// 리소스 출력에 사용
+
+	CStatic m_sFrame;
+	CSliderCtrl m_sliderSeek;
+	CSliderCtrl m_sliderVolume;
+	CButton m_btnPlay;
+	CButton m_btnPause;
+	CButton m_btnStop;
 };

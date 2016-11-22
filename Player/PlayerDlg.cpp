@@ -59,6 +59,12 @@ CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
 void CPlayerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_STATIC_FRAME, m_sFrame);
+	DDX_Control(pDX, IDC_SLIDER_SEEK, m_sliderSeek);
+	DDX_Control(pDX, IDC_SLIDER_VOLUME, m_sliderVolume);
+	DDX_Control(pDX, IDC_BUTTON_PLAY, m_btnPlay);
+	DDX_Control(pDX, IDC_BUTTON_PAUSE, m_btnPause);
+	DDX_Control(pDX, IDC_BUTTON_STOP, m_btnStop);
 }
 
 BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
@@ -72,6 +78,7 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_COMMAND(IDM_FULLSCREEN, &CPlayerDlg::OnFullscreen)
 	ON_WM_SIZE()
 	ON_WM_TIMER()
+	ON_WM_GETMINMAXINFO()
 END_MESSAGE_MAP()
 
 
@@ -107,34 +114,11 @@ BOOL CPlayerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	
+
 	// 초기화 작업
 	MoveWindow(NULL, NULL, 976, 599);
+	GdiplusStartup(&m_GdiplusToken, &m_GdiplusStartupInput, NULL);
 
-// 	InitToolbar();
-
-// 	m_dlgToolBar.Create(this);
-// 	m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1);
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
-
-// 	if (!m_dlgToolBar.CreateEx(this, TBSTYLE_FLAT | TBSTYLE_LIST, WS_CHILD | WS_VISIBLE)
-// 		|| !m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1))
-// 	{
-// 		TRACE0("Failed to create toolbar\n");
-// 		return -1;
-// 	}
-// 	m_dlgToolBar.SetBarStyle(m_dlgToolBar.GetBarStyle()
-// 		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_GRIPPER | CBRS_FLYBY | CBRS_BOTTOM);
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
-// 
-// 	CToolBarCtrl& ctrbar = m_dlgToolBar.GetToolBarCtrl();
-// 	ctrbar.AddBitmap(1, IDB_PRINT);
-// 	m_dlgToolBar.SetButtonText(1, "인쇄");
-// 
-// 	ctrbar.AddBitmap(2, IDB_DOWN);
-// 	m_dlgToolBar.SetButtonText(2, "인증기데이터 읽기");
-// 
-// 	ctrbar.AddBitmap(3, IDB_UP); // 
-// 	m_dlgToolBar.SetButtonText(3, "인증기 출력");
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -180,6 +164,17 @@ void CPlayerDlg::OnPaint()
 	{
 		CDialogEx::OnPaint();
 	}
+
+	CDC * pDC = AfxGetMainWnd()->GetDC();
+	pDC->FillSolidRect(picRect, RGB(0, 0, 0));
+
+	Graphics graphics(this->m_hWnd);
+	Image image(L"res\\SuperSheepFlying.png");
+	graphics.DrawImage(&image, (picRect.right / 2 - 128), (picRect.bottom / 2 - 128));
+
+	pDC->FillSolidRect(toolbarRect, RGB(240, 240, 240));
+	AfxGetMainWnd()->ReleaseDC(pDC);
+
 }
 
 // 사용자가 최소화된 창을 끄는 동안에 커서가 표시되도록 시스템에서
@@ -275,7 +270,7 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 	{
 
 	}
-	pDlg->DrawBlackScreen();
+	pDlg->Invalidate();
 	
 	return 0;
 }
@@ -384,8 +379,7 @@ void CPlayerDlg::OnClose()
 		m_pVDecoder = nullptr;
 	}
 	
-	
-	DrawBlackScreen();
+	Invalidate();
 }
 
 
@@ -414,62 +408,59 @@ void CPlayerDlg::OnFullscreen()
 
 
 
-// 화면 크기 조절시 안정성 증가
+// 화면 크기 조절시 처리 - 화면 영역 및 컨트롤 크기 조절 처리
 void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
+	
+	if (IsWindow(m_sFrame.m_hWnd))
+	{
+		picRect.right = cx;
+		picRect.bottom = cy - 80;
+		m_sFrame.MoveWindow(picRect);
+
+		toolbarRect.top = picRect.bottom;
+		toolbarRect.left = 0;
+		toolbarRect.right = cx;
+		toolbarRect.bottom = cy;
+	}
+
+	if (IsWindow(m_sliderSeek.m_hWnd))
+	{
+		GetDlgItem(IDC_SLIDER_SEEK)->SetWindowPos(NULL, 10, picRect.bottom + 5, cx - 20, 30, 0);
+		GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+
+	if (IsWindow(m_sliderVolume.m_hWnd))
+	{
+		GetDlgItem(IDC_SLIDER_VOLUME)->SetWindowPos(NULL, cx - 140, picRect.bottom + 35, 130, 30, 0);
+		GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+
+	if (IsWindow(m_btnPlay.m_hWnd))
+	{
+		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowPos(NULL, 15, picRect.bottom + 35, 30, 30, 0);
+		GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+
+	if (IsWindow(m_btnPause.m_hWnd))
+	{
+		GetDlgItem(IDC_BUTTON_PAUSE)->SetWindowPos(NULL, 45, picRect.bottom + 35, 30, 30, 0);
+		GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+
+	if (IsWindow(m_btnStop.m_hWnd))
+	{
+		GetDlgItem(IDC_BUTTON_STOP)->SetWindowPos(NULL, 75, picRect.bottom + 35, 30, 30, 0);
+		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+	}
+
+	Invalidate();
 }
 
 
 
-// void CPlayerDlg::InitToolbar()
-// {
-// 	if (!m_dlgToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_BOTTOM
-// 		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
-// 		!m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1))
-// 	{
-// 		TRACE0("Failed to Create Dialog Toolbar\n");
-// 		EndDialog(IDCANCEL);
-// 	}
-// 	CRect    rcClientNew; // New Client Rect with Tollbar Added
-// 	GetClientRect(m_rectOldSize); // Retrive the Old Client WindowSize
-// 
-// 								// Called to reposition and resize control bars in the client area of a window
-// 								// The reposQuery FLAG does not really traw the Toolbar.  It only does the calculations.
-// 								// And puts the new ClientRect values in rcClientNew so we can do the rest of the Math.
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0, reposQuery, rcClientNew);
-// 
-// 	// All of the Child Windows (Controls) now need to be moved so the Tollbar does not cover them up.
-// 	// Offest to move all child controls after adding Tollbar
-// 	CPoint ptOffset(rcClientNew.left - m_rectOldSize.left, rcClientNew.top - m_rectOldSize.top);
-// 
-// 	CRect    rcChild;
-// 	CWnd*    pwndChild = GetWindow(GW_CHILD);  //Handle to the Dialog Controls
-// 
-// 	while (pwndChild) // Cycle through all child controls
-// 	{
-// 
-// 		pwndChild->GetWindowRect(rcChild); //  Get the child control RECT
-// 		ScreenToClient(rcChild);
-// 		rcChild.OffsetRect(ptOffset); // Changes the Child Rect by the values of the claculated offset
-// 		pwndChild->MoveWindow(rcChild, FALSE); // Move the Child Control
-// 		pwndChild = pwndChild->GetNextWindow();
-// 
-// 	}
-// 
-// 	CRect    rcWindow;
-// 	GetWindowRect(rcWindow); // Get the RECT of the Dialog
-// 	rcWindow.right += m_rectOldSize.Width() - rcClientNew.Width(); // Increase width to new Client Width
-// 	rcWindow.bottom += m_rectOldSize.Height() - rcClientNew.Height(); // Increase height to new Client Height
-// 	MoveWindow(rcWindow, FALSE); // Redraw Window
-// 
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
-// 
-// 
-// }
-
-
+// 오디오-비디오 싱크를 위한 타이머 설정
 void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
@@ -477,4 +468,15 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 
 
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+
+
+// 다이얼로그 최소 크기 설정
+void CPlayerDlg::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
+{
+	lpMMI->ptMinTrackSize.x = 300;
+	lpMMI->ptMinTrackSize.y = 300;
+
+	CDialogEx::OnGetMinMaxInfo(lpMMI);
 }
