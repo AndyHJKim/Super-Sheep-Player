@@ -130,7 +130,8 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 		}
 	}
 
-	AfxGetMainWnd()->GetClientRect(viewRect);
+// 	AfxGetMainWnd()->GetClientRect(viewRect);
+// 	viewRect.bottom -= ((CPlayerDlg *)AfxGetMainWnd())->GetToolbarHeight();
 	videoWidth = avVideoStream->codec->width;
 	videoHeight = avVideoStream->codec->height;
 
@@ -378,12 +379,12 @@ int CFFmpeg::DecodeVideoFrame(int * gotFrame, int cached)
 
 		// 화면 세팅
  		AfxGetMainWnd()->GetClientRect(viewRect);
-
+		viewRect.bottom -= 25;
 		m_pVideo->D3DVideoRender(*(videoData), viewRect);
 
 		// 비디오의 fps 계산 - 화면 표시 타이밍에 영향
- 		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.5;
- 		Sleep(850 / fps - 1);
+ 		double fps = av_q2d(avFormatCtx->streams[m_nVideoStreamIndex]->r_frame_rate) - 0.15;
+ 		Sleep(950 / fps - 1);
 	}
 	
 	videoDecoded = true;

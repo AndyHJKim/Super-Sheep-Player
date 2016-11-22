@@ -106,34 +106,24 @@ BOOL CPlayerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	
-	// 초기화 작업
+	/// 
+	/// 초기화 작업
+	/// 
+	// 초기 창 크기 및 위치 설정
 	MoveWindow(NULL, NULL, 976, 599);
+	// 툴바 높이 (동영상 표시 영역에 영향)
+	m_ToolbarHeight = 25;
+	// 툴바 설정
+	if (!m_dlgToolbar.CreateEx(this, TBSTYLE_FLAT | TBSTYLE_LIST, WS_CHILD | WS_VISIBLE)
+		|| !m_dlgToolbar.LoadToolBar(IDR_TOOLBAR1))
+	{
+		TRACE0("Failed to create toolbar\n");
+		return -1;
+	}
+	m_dlgToolbar.SetBarStyle(m_dlgToolbar.GetBarStyle()
+		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_GRIPPER | CBRS_FLYBY | CBRS_BOTTOM);
+	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
 
-// 	InitToolbar();
-
-// 	m_dlgToolBar.Create(this);
-// 	m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1);
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
-
-// 	if (!m_dlgToolBar.CreateEx(this, TBSTYLE_FLAT | TBSTYLE_LIST, WS_CHILD | WS_VISIBLE)
-// 		|| !m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1))
-// 	{
-// 		TRACE0("Failed to create toolbar\n");
-// 		return -1;
-// 	}
-// 	m_dlgToolBar.SetBarStyle(m_dlgToolBar.GetBarStyle()
-// 		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_GRIPPER | CBRS_FLYBY | CBRS_BOTTOM);
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
-// 
-// 	CToolBarCtrl& ctrbar = m_dlgToolBar.GetToolBarCtrl();
-// 	ctrbar.AddBitmap(1, IDB_PRINT);
-// 	m_dlgToolBar.SetButtonText(1, "인쇄");
-// 
-// 	ctrbar.AddBitmap(2, IDB_DOWN);
-// 	m_dlgToolBar.SetButtonText(2, "인증기데이터 읽기");
-// 
-// 	ctrbar.AddBitmap(3, IDB_UP); // 
-// 	m_dlgToolBar.SetButtonText(3, "인증기 출력");
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -205,7 +195,6 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 
 		// ENTER : 전체 화면/창모드 토글
 		case VK_RETURN:
-			
 			if (m_bIsFullScreen)
 			{
 				m_bIsFullScreen = false;
@@ -226,23 +215,24 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				SetMenu(NULL);
 				ShowWindow(SW_SHOWMAXIMIZED);
 			}
+			RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
 		
 			return TRUE;
 
 		// SPACEBAR : 재생/일시정지 토글
 		case VK_SPACE:
-			if (m_pVDecoder->m_pVideo != NULL)
+			if (m_pVDecoder != nullptr)
 			{
 				switch (m_pVDecoder->m_pVideo->renderState)
 				{
 				case RENDER_STATE_STARTED:
- 					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_PAUSED;
+					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_PAUSED;
 					m_pADecoder->m_pAudio->XAudio2Pause();
 					m_pADThread->SuspendThread();
 					m_pVDThread->SuspendThread();
 					break;
 				case RENDER_STATE_PAUSED:
- 					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
+					m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
 					m_pADThread->ResumeThread();
 					m_pVDThread->ResumeThread();
 					m_pADecoder->m_pAudio->XAudio2Resume();
@@ -252,7 +242,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 			break;
 
 		default:
-			break;
+			return TRUE;
 		}
 
 	default:
@@ -272,7 +262,6 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 
 	while (m_pDecoder->Decoder() >= 0)
 	{
-		
 	}
 	pDlg->DrawBlackScreen();
 	
@@ -326,17 +315,13 @@ void CPlayerDlg::OnOpenFile()
 		if (FAILED(m_pVDecoder->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 
-		
-
 		// Direct3D 초기화
 		m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
 		
 		// 스레드 시작
 		m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
 		m_pVDThread = AfxBeginThread(FFmpegDecoderThread, m_pVDecoder);
- 	
 	}
-
 }
 
 
@@ -370,10 +355,9 @@ void CPlayerDlg::OnClose()
 		delete m_pVDecoder->m_pVideo;
 		delete m_pVDecoder;
 		m_pVDecoder = nullptr;
+		DrawBlackScreen();
 	}
-	
-	
-	DrawBlackScreen();
+
 }
 
 
@@ -406,53 +390,7 @@ void CPlayerDlg::OnFullscreen()
 void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
+	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
 }
 
 
-
-// void CPlayerDlg::InitToolbar()
-// {
-// 	if (!m_dlgToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_BOTTOM
-// 		| CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
-// 		!m_dlgToolBar.LoadToolBar(IDR_TOOLBAR1))
-// 	{
-// 		TRACE0("Failed to Create Dialog Toolbar\n");
-// 		EndDialog(IDCANCEL);
-// 	}
-// 	CRect    rcClientNew; // New Client Rect with Tollbar Added
-// 	GetClientRect(m_rectOldSize); // Retrive the Old Client WindowSize
-// 
-// 								// Called to reposition and resize control bars in the client area of a window
-// 								// The reposQuery FLAG does not really traw the Toolbar.  It only does the calculations.
-// 								// And puts the new ClientRect values in rcClientNew so we can do the rest of the Math.
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0, reposQuery, rcClientNew);
-// 
-// 	// All of the Child Windows (Controls) now need to be moved so the Tollbar does not cover them up.
-// 	// Offest to move all child controls after adding Tollbar
-// 	CPoint ptOffset(rcClientNew.left - m_rectOldSize.left, rcClientNew.top - m_rectOldSize.top);
-// 
-// 	CRect    rcChild;
-// 	CWnd*    pwndChild = GetWindow(GW_CHILD);  //Handle to the Dialog Controls
-// 
-// 	while (pwndChild) // Cycle through all child controls
-// 	{
-// 
-// 		pwndChild->GetWindowRect(rcChild); //  Get the child control RECT
-// 		ScreenToClient(rcChild);
-// 		rcChild.OffsetRect(ptOffset); // Changes the Child Rect by the values of the claculated offset
-// 		pwndChild->MoveWindow(rcChild, FALSE); // Move the Child Control
-// 		pwndChild = pwndChild->GetNextWindow();
-// 
-// 	}
-// 
-// 	CRect    rcWindow;
-// 	GetWindowRect(rcWindow); // Get the RECT of the Dialog
-// 	rcWindow.right += m_rectOldSize.Width() - rcClientNew.Width(); // Increase width to new Client Width
-// 	rcWindow.bottom += m_rectOldSize.Height() - rcClientNew.Height(); // Increase height to new Client Height
-// 	MoveWindow(rcWindow, FALSE); // Redraw Window
-// 
-// 	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
-// 
-// 
-// }

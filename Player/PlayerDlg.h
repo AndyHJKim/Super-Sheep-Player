@@ -48,7 +48,8 @@ protected:
 	bool		m_bIsFullScreen;	// 전체화면 체크
 	CMenu *		m_dlgMenu;			// 전체화면 전환시 메뉴 객체 저장해 둠
 	
-	CToolBar	m_dlgToolBar;		// 동영상 네비게이션 툴바
+	CToolBar	m_dlgToolbar;		// 동영상 네비게이션 툴바
+	int			m_ToolbarHeight;	// 툴바 높이 = 25 고정 (생성자 초기화)
 	CRect		m_rectOldSize;		// 네비게이션 툴바 위치 조정
 
 
@@ -68,6 +69,7 @@ public:
 
 	bool IsFullScreen() { return m_bIsFullScreen; }
 	void DrawBlackScreen();
+	int GetToolbarHeight() { return m_ToolbarHeight; }
 
 	afx_msg void OnOpenFile();
 	afx_msg void OnClose();
@@ -76,5 +78,4 @@ public:
 	afx_msg void OnFullscreen();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 
-	void InitToolbar();
 };

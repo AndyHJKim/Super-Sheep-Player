@@ -71,7 +71,8 @@ HRESULT CD3DRenderer::D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight, RE
 		NULL);
 
 	m_prevViewport.right = viewRect.right;
-	m_prevViewport.bottom = viewRect.bottom;
+	m_prevViewport.bottom =
+		viewRect.bottom - ((CPlayerDlg *)AfxGetMainWnd())->GetToolbarHeight();
 
 	return hr;
 
@@ -83,6 +84,8 @@ HRESULT CD3DRenderer::D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight, RE
 HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 {
 	HRESULT	hr;
+	int docWidth = docRect.Width();
+	int docHeight = docRect.Height();
 
 	// 초기화 확인
 	if (m_pDirect3DSurfaceRender == NULL)
@@ -130,33 +133,33 @@ HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 
 	// 화면 비율 유지 설정
 	CPlayerDlg * pDlg = (CPlayerDlg *)AfxGetApp;
-	if (m_prevViewport.right != docRect.Width()
-		|| m_prevViewport.bottom != docRect.Height())
+	if (m_prevViewport.right != docWidth
+		|| m_prevViewport.bottom != docHeight)
 	{
  		pDlg->DrawBlackScreen();
-		m_prevViewport.right = docRect.Width();
-		m_prevViewport.bottom = docRect.Height();
+		m_prevViewport.right = docWidth;
+		m_prevViewport.bottom = docHeight;
 	}
 
-	m_dstViewport.right = docRect.Width();
-	m_dstViewport.bottom = docRect.Height();
+	m_dstViewport.right = docWidth;
+	m_dstViewport.bottom = docHeight;
 
 	double scrRatio = (double)m_dstViewport.right / m_dstViewport.bottom;
 	if (aspRatio > scrRatio)
 	{
-		int vHeight = docRect.Width() / aspRatio;
-		m_dstViewport.top = (docRect.Height() - vHeight) / 2;
+		int vHeight = docWidth / aspRatio;
+		m_dstViewport.top = (docHeight - vHeight) / 2;
 		m_dstViewport.left = 0;
-		m_dstViewport.right = docRect.Width();
-		m_dstViewport.bottom = (docRect.Height() - vHeight) / 2 + vHeight;
+		m_dstViewport.right = docWidth;
+		m_dstViewport.bottom = (docHeight - vHeight) / 2 + vHeight;
 	}
 	else if (aspRatio <= scrRatio)
 	{
-		int vWidth = docRect.Height() * aspRatio;
+		int vWidth = docHeight * aspRatio;
 		m_dstViewport.top = 0;
-		m_dstViewport.left = (docRect.Width() - vWidth) / 2;
-		m_dstViewport.right = (docRect.Width() - vWidth) / 2 + vWidth;
-		m_dstViewport.bottom = docRect.Height();
+		m_dstViewport.left = (docWidth - vWidth) / 2;
+		m_dstViewport.right = (docWidth - vWidth) / 2 + vWidth;
+		m_dstViewport.bottom = docHeight;
 	}
 
 	// 화면에 표시하기 위한 최종 과정
