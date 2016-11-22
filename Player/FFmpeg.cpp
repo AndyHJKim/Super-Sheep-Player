@@ -333,7 +333,7 @@ int CFFmpeg::DecodeAudioFrame()
 	int ret = 0;
 	int decoded = avPacket.size;
 	int *gotFrame = nullptr;
-
+	double pts;
 	audioDecoded = false;
 
 	while (audio_pkt.size > 0)
@@ -396,10 +396,10 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.size -= ret;
 
 		pts = audio_clock;
-		*pts_ptr = pts;
-		n = 2 * is->audio_st->codec->channels;
-		is->audio_clock += (double)data_size /
-			(double)(n * is->audio_st->codec->sample_rate);
+		//*pts_ptr = pts;
+		int n = 2 * avAudioStream->codec->channels;
+		audio_clock += (double)m_swr_buf_len /
+			(double)(n * avAudioStream->codec->sample_rate);
 
 		//av_frame_free(&avFrame);
 	}
@@ -414,6 +414,10 @@ int CFFmpeg::DecodeAudioFrame()
 	}
 	audio_pkt_data = audio_pkt.data;
 	audio_pkt_size = audio_pkt.size;
+
+	if (audio_pkt.pts != AV_NOPTS_VALUE) {
+		audio_clock = av_q2d(avAudioStream->time_base)*audio_pkt.pts;
+	}
 
 	return ret;
 }
@@ -675,7 +679,7 @@ void CFFmpeg::video_refresh_timer() {
 			/* show the picture! */
 			AfxGetMainWnd()->GetClientRect(viewRect);
 
-			m_pVideo->D3DVideoRender(*(videoData), viewRect);
+			m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
 
 			/* update queue for next picture! */
 			if (++pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
@@ -726,14 +730,14 @@ double CFFmpeg::get_audio_clock() {
 	int hw_buf_size, bytes_per_sec, n;
 
 	pts = audio_clock; /* maintained in the audio thread */
-	hw_buf_size = audio_buf_size - audio_buf_index;
-	bytes_per_sec = 0;
-	n = avAudioStream->codec->channels * 2;
+	//hw_buf_size = audio_buf_size - audio_buf_index;
+	//bytes_per_sec = 0;
+	/*n = avAudioStream->codec->channels * 2;
 	if (avAudioStream) {
 		bytes_per_sec =avAudioStream->codec->sample_rate * n;
 	}
 	if (bytes_per_sec) {
 		pts -= (double)hw_buf_size / bytes_per_sec;
-	}
+	}*/
 	return pts;
 }
