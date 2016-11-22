@@ -22,7 +22,8 @@ CFFmpeg::CFFmpeg(const int type)
 	, avVideoCodecCtx(nullptr)
 	, avAudioStream(nullptr)
 	, avVideoStream(nullptr)
-	, avFrame(nullptr)
+	, avVideoFrame(nullptr)
+	, avAudioFrame(nullptr)
 	, m_nAudioStreamIndex(NULL)
 	, m_nVideoStreamIndex(NULL)
 	, m_pSwrCtx(nullptr)
@@ -44,7 +45,8 @@ CFFmpeg::CFFmpeg(const int type)
 CFFmpeg::~CFFmpeg()
 {
 	av_packet_unref(&avPacket);
-	av_frame_free(&avFrame);
+	av_frame_free(&avAudioFrame);
+	av_frame_free(&avVideoFrame);
 	avcodec_free_context(&avAudioCodecCtx);		// Audio Codec Context 반환
 	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
 	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
@@ -127,8 +129,9 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 	// 프레임 할당
 	if (SUCCEEDED(hr))
 	{
-		avFrame = av_frame_alloc();
-		if (!avFrame)
+		avVideoFrame = av_frame_alloc();
+		avAudioFrame = av_frame_alloc();
+		if (!avAudioFrame || !avVideoFrame)
 		{
 			AfxMessageBox(_T("ERROR: allocating frame"));
 			hr = E_OUTOFMEMORY; // 할당 실패
@@ -271,9 +274,9 @@ int CFFmpeg::Decoder()
 	while (1)
 	{
 		AVPacket originalPacket = avPacket;
-		if (audioq.size > MAX_AUDIOQ_SIZE ) {
+		if (audioq.nb_packets > 10 || videoq.nb_packets > 10 ) {
 			Sleep(10);
-			continue;
+		//	continue;
 		}
 
 
@@ -333,7 +336,7 @@ int CFFmpeg::DecodeAudioFrame()
 	int ret = 0;
 	int decoded = avPacket.size;
 	int *gotFrame = nullptr;
-
+	double pts;
 	audioDecoded = false;
 
 	while (audio_pkt.size > 0)
@@ -349,7 +352,7 @@ int CFFmpeg::DecodeAudioFrame()
 		packet_queue_get(&audioq, &avPacket, 1);
 		*/
 		// 오디오 프레임 디코딩
-		ret = avcodec_decode_audio4(avAudioCodecCtx, avFrame, &gotFrame, &audio_pkt);
+		ret = avcodec_decode_audio4(avAudioCodecCtx, avAudioFrame, &gotFrame, &audio_pkt);
 		if (ret < 0)
 		{
 			AfxMessageBox(_T("ERROR: decoding audio frame"));
@@ -365,23 +368,23 @@ int CFFmpeg::DecodeAudioFrame()
 					AfxMessageBox(_T("swr_alloc error.\n"));
 					return -1;
 				}
-				av_opt_set_int(m_pSwrCtx, "in_channel_layout", avFrame->channel_layout, 0);
-				av_opt_set_int(m_pSwrCtx, "out_channel_layout", avFrame->channel_layout, 0);
-				av_opt_set_int(m_pSwrCtx, "in_sample_rate", avFrame->sample_rate, 0);
-				av_opt_set_int(m_pSwrCtx, "out_sample_rate", avFrame->sample_rate, 0);
-				av_opt_set_sample_fmt(m_pSwrCtx, "in_sample_fmt", (AVSampleFormat)avFrame->format, 0);
+				av_opt_set_int(m_pSwrCtx, "in_channel_layout", avAudioFrame->channel_layout, 0);
+				av_opt_set_int(m_pSwrCtx, "out_channel_layout", avAudioFrame->channel_layout, 0);
+				av_opt_set_int(m_pSwrCtx, "in_sample_rate", avAudioFrame->sample_rate, 0);
+				av_opt_set_int(m_pSwrCtx, "out_sample_rate", avAudioFrame->sample_rate, 0);
+				av_opt_set_sample_fmt(m_pSwrCtx, "in_sample_fmt", (AVSampleFormat)avAudioFrame->format, 0);
 				av_opt_set_sample_fmt(m_pSwrCtx, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
 				ret = swr_init(m_pSwrCtx);
 				if (ret < 0) {
 					AfxMessageBox(_T("swr_init error ret=%08x.\n"));
 					return ret;
 				}
-				int buf_size = avFrame->nb_samples*avFrame->channels * 2; /* the 2 means S16 */
+				int buf_size = avAudioFrame->nb_samples*avAudioFrame->channels * 2; /* the 2 means S16 */
 				m_pSwr_buf = new unsigned char[buf_size];
 				m_swr_buf_len = buf_size;
 			}
 
-			ret = swr_convert(m_pSwrCtx, &m_pSwr_buf, avFrame->nb_samples, (const uint8_t**)avFrame->extended_data, avFrame->nb_samples);
+			ret = swr_convert(m_pSwrCtx, &m_pSwr_buf, avAudioFrame->nb_samples, (const uint8_t**)avAudioFrame->extended_data, avAudioFrame->nb_samples);
 			if (ret < 0) {
 				AfxMessageBox(_T("swr_convert error ret=%08x.\n"));
 				return ret;
@@ -395,11 +398,11 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.data += ret;
 		audio_pkt.size -= ret;
 
-// 		pts = audio_clock;
-// 		*pts_ptr = pts;
-// 		n = 2 * is->audio_st->codec->channels;
-// 		is->audio_clock += (double)data_size /
-// 			(double)(n * is->audio_st->codec->sample_rate);
+		pts = audio_clock;
+		//*pts_ptr = pts;
+		int n = 2 * avAudioStream->codec->channels;
+		audio_clock += (double)m_swr_buf_len /
+			(double)(n * avAudioStream->codec->sample_rate);
 
 		//av_frame_free(&avFrame);
 	}
@@ -414,6 +417,10 @@ int CFFmpeg::DecodeAudioFrame()
 	}
 	audio_pkt_data = audio_pkt.data;
 	audio_pkt_size = audio_pkt.size;
+
+	if (audio_pkt.pts != AV_NOPTS_VALUE) {
+		audio_clock = av_q2d(avAudioStream->time_base)*audio_pkt.pts;
+	}
 
 	return ret;
 }
@@ -471,7 +478,7 @@ int CFFmpeg::DecodeVideoFrame()
 		pts = 0;
 
 		global_video_pkt_pts = video_pkt.pts;
-		ret = avcodec_decode_video2(avVideoCodecCtx, avFrame, &gotFrame, &video_pkt);
+		ret = avcodec_decode_video2(avVideoCodecCtx, avVideoFrame, &gotFrame, &video_pkt);
 		if (ret < 0)
 		{
 			AfxMessageBox(_T("ERROR: decoding video frame"));
@@ -479,8 +486,8 @@ int CFFmpeg::DecodeVideoFrame()
 		}
 
 		if (video_pkt.dts == AV_NOPTS_VALUE
-			&& avFrame->opaque && *(uint64_t*)avFrame->opaque != AV_NOPTS_VALUE) {
-			pts = *(uint64_t *)avFrame->opaque;
+			&& avVideoFrame->opaque && *(uint64_t*)avVideoFrame->opaque != AV_NOPTS_VALUE) {
+			pts = *(uint64_t *)avVideoFrame->opaque;
 		}
 		else if (video_pkt.dts != AV_NOPTS_VALUE) {
 			pts = video_pkt.dts;
@@ -494,9 +501,9 @@ int CFFmpeg::DecodeVideoFrame()
 
 		if (gotFrame)
 		{
-			pts = synchronize_video(avFrame, pts);
-			if (avFrame->width != videoWidth || avFrame->height != videoHeight ||
-				avFrame->format != pixelFormat) {
+			pts = synchronize_video(avVideoFrame, pts);
+			if (avVideoFrame->width != videoWidth || avVideoFrame->height != videoHeight ||
+				avVideoFrame->format != pixelFormat) {
 				AfxMessageBox(_T("ERROR: irregular input video frame size"));
 				return -1;
 			}
@@ -508,7 +515,7 @@ int CFFmpeg::DecodeVideoFrame()
 			//lock.unlock();
 			// 임시 버퍼에 raw video 데이터를 저장
 			av_image_copy(pictq[pictq_windex].videoData, pictq[pictq_windex].videoLinesize,
-				(const uint8_t **)(avFrame->data), avFrame->linesize,
+				(const uint8_t **)(avVideoFrame->data), avVideoFrame->linesize,
 				pixelFormat, videoWidth, videoHeight);
 			pictq[pictq_windex].pts = pts;
 			//lock.lock();
@@ -531,7 +538,7 @@ int CFFmpeg::DecodeVideoFrame()
 		av_free_packet(&video_pkt);
 	}
 	videoDecoded = true;
-	av_free(avFrame);
+	av_free(avVideoFrame);
 	return decoded;
 }
 
@@ -675,7 +682,7 @@ void CFFmpeg::video_refresh_timer() {
 			/* show the picture! */
 			AfxGetMainWnd()->GetClientRect(viewRect);
 
-			m_pVideo->D3DVideoRender(*(videoData), viewRect);
+			m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
 
 			/* update queue for next picture! */
 			if (++pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
@@ -726,14 +733,14 @@ double CFFmpeg::get_audio_clock() {
 	int hw_buf_size, bytes_per_sec, n;
 
 	pts = audio_clock; /* maintained in the audio thread */
-	hw_buf_size = audio_buf_size - audio_buf_index;
-	bytes_per_sec = 0;
-	n = avAudioStream->codec->channels * 2;
+	//hw_buf_size = audio_buf_size - audio_buf_index;
+	//bytes_per_sec = 0;
+	/*n = avAudioStream->codec->channels * 2;
 	if (avAudioStream) {
 		bytes_per_sec =avAudioStream->codec->sample_rate * n;
 	}
 	if (bytes_per_sec) {
 		pts -= (double)hw_buf_size / bytes_per_sec;
-	}
+	}*/
 	return pts;
 }

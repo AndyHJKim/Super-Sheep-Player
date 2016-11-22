@@ -83,7 +83,6 @@ public:
 	static int threadVideo(CFFmpeg * ffmpeg);
 
 	void video_refresh_timer();
-	double get_audio_clock();
 
 	static int get_buffer(struct AVCodecContext *c, AVFrame *pic, int flags);
 	double synchronize_video(AVFrame *src_frame, double pts);
@@ -97,7 +96,8 @@ public:
 
 	AVStream *	avAudioStream;
 	AVStream *	avVideoStream;
-	AVFrame *	avFrame;
+	AVFrame *	avVideoFrame;
+	AVFrame *   avAudioFrame;
 	AVPacket	avPacket;
 
 	const int decodeType;
@@ -131,7 +131,6 @@ public:
 
 
 
-	double          video_clock;
 	double          audio_clock;
 	AVStream        *audio_st;
 	PacketQueue     audioq;
