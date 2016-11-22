@@ -87,7 +87,6 @@ public:
 
 	static int get_buffer(struct AVCodecContext *c, AVFrame *pic, int flags);
 	double synchronize_video(AVFrame *src_frame, double pts);
-	double get_audio_clock();
 
 
 
@@ -146,7 +145,7 @@ public:
 	double          frame_timer;
 	double          frame_last_pts;
 	double          frame_last_delay;
-	double          video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
+// 	double          video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
 	AVStream        *video_st;
 	PacketQueue     videoq;
 

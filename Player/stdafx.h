@@ -37,6 +37,11 @@
 
 
 
+// 이미지 파일 출력을 위한 GDI+ 사용
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus")
+using namespace Gdiplus;
+
 
 
 

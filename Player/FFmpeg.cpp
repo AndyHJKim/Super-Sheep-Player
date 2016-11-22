@@ -395,11 +395,11 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.data += ret;
 		audio_pkt.size -= ret;
 
-		pts = audio_clock;
-		*pts_ptr = pts;
-		n = 2 * is->audio_st->codec->channels;
-		is->audio_clock += (double)data_size /
-			(double)(n * is->audio_st->codec->sample_rate);
+// 		pts = audio_clock;
+// 		*pts_ptr = pts;
+// 		n = 2 * is->audio_st->codec->channels;
+// 		is->audio_clock += (double)data_size /
+// 			(double)(n * is->audio_st->codec->sample_rate);
 
 		//av_frame_free(&avFrame);
 	}
