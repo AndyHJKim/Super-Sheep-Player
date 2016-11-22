@@ -263,10 +263,9 @@ int CFFmpeg::Decoder()
 		// 프레임 읽기
 	while (1)
 	{
-		AVPacket originalPacket = avPacket;
-		if (audioq.nb_packets > 10 || videoq.nb_packets > 10 ) {
+		if (audioq.nb_packets >= 10 || videoq.nb_packets >= 10 ) {
 			Sleep(10);
-		//	continue;
+			//continue;
 		}
 
 
@@ -351,9 +350,8 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.size -= ret;
 
 		pts = audio_clock;
-		int n = 2 * avAudioStream->codec->channels;
-		audio_clock += (double)m_swr_buf_len /
-			(double)(n * avAudioStream->codec->sample_rate);
+		audio_clock += (double)avAudioFrame->nb_samples /
+			(double)avAudioStream->codec->sample_rate;
 	}
 
 	/* next packet */
@@ -568,6 +566,7 @@ void CFFmpeg::video_refresh_timer() {
 				/* Really it should skip the picture instead */
 				actual_delay = 0.010;
 			}
+		
 			AfxGetMainWnd()->SetTimer(0, (int)(actual_delay * 1000 + 0.5), NULL);
 			/* show the picture! */
 			//AfxGetMainWnd()->GetClientRect(viewRect);

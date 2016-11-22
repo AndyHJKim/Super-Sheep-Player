@@ -1,7 +1,9 @@
 
 // PlayerDlg.h : 플레이어 메인 헤더
 //
-
+extern "C" {
+#include <libavutil/time.h>
+}
 #pragma once
 #include <queue>
 #include "FFmpeg.h"

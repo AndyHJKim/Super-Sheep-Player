@@ -266,7 +266,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 			{
 				video = RENDER_STATE_STARTED;
 				m_pCFFmpeg->m_pAudio->XAudio2Resume();
-				//m_pCFFmpeg->video_refresh_timer();
+				m_pCFFmpeg->frame_timer = av_gettime() / 1000000.0;
 				SetTimer(0, 1, NULL);
 				ResumeThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 				ResumeThread(m_pCFFmpeg->videoDecodeThread.native_handle());
