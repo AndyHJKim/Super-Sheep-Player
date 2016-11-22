@@ -289,15 +289,7 @@ UINT CPlayerDlg::FFmpegDecoderThread(LPVOID _method)
 	return 0;
 }
 
-UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method) {
-	CFFmpeg * m_pDecoder = (CFFmpeg *)_method;
-	//while (m_pDecoder->DecodeAudioFrame()>=0)
-	//{
-	m_pDecoder->DecodeAudioFrame();
-	//}
 
-	return 0;
-}
 
 
 
@@ -325,30 +317,21 @@ void CPlayerDlg::OnOpenFile()
 		filePath = pDlg.GetPathName();
 
 		// 미디어 소스 열기 + 초기화
-		OnClose();
-		//m_pADecoder	= new CFFmpeg(DECODE_AUDIO);
-		m_pVDecoder	= new CFFmpeg(DECODE_VIDEO);
+		OnClose();	
+		m_pCFFmpeg	= new CFFmpeg(DECODE_VIDEO);
 		
 
-		/*	if (FAILED(m_pADecoder->OpenMediaSource(filePath)))
-				AfxMessageBox(_T("ERROR: OpenMediaSource function call"));*/
-		if (FAILED(m_pVDecoder->OpenMediaSource(filePath)))
+		if (FAILED(m_pCFFmpeg->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 
 		
 
 		// Direct3D 초기화
-//		m_pVDecoder->m_pVideo->renderState = RENDER_STATE_STARTED;
+//		m_pCFFmpeg->m_pVideo->renderState = RENDER_STATE_STARTED;
 		
 		// 스레드 시작
-		//m_pADThread = AfxBeginThread(FFmpegDecoderThread, m_pADecoder);
-
-		video = RENDER_STATE_STARTED;
-
-		m_pVDThread = AfxBeginThread(FFmpegDecoderThread, m_pVDecoder);
-		m_pAudioDecodeThread = AfxBeginThread(FFmpegAudioDecodeThread, m_pVDecoder);
+		m_pPlayThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
- 	
 	}
 
 }
@@ -357,33 +340,20 @@ void CPlayerDlg::OnOpenFile()
 
 // 파일 → 파일 닫기 메뉴
 void CPlayerDlg::OnClose()
-{
-	if (m_pADThread != nullptr)
+{	
+	if (m_pPlayThread != nullptr)
 	{
-		m_pADThread->SuspendThread();
-		HANDLE hThread = m_pADThread->m_hThread;
+		m_pPlayThread->SuspendThread();
+		HANDLE hThread = m_pPlayThread->m_hThread;
 		TerminateThread(hThread, 0);
 	}
-	if (m_pVDThread != nullptr)
+		
+	if (m_pCFFmpeg != nullptr)
 	{
-		m_pVDThread->SuspendThread();
-		HANDLE hThread = m_pVDThread->m_hThread;
-		TerminateThread(hThread, 0);
-	}
-	
-	if (m_pADecoder != nullptr)
-	{
-		m_pADecoder->m_pAudio->XAudio2Cleanup();
-		delete m_pADecoder->m_pAudio;
-		delete m_pADecoder;
-		m_pADecoder = nullptr;
-	}
-	if (m_pVDecoder != nullptr)
-	{
-		m_pVDecoder->m_pVideo->D3DCleanup();
-		delete m_pVDecoder->m_pVideo;
-		delete m_pVDecoder;
-		m_pVDecoder = nullptr;
+		m_pCFFmpeg->m_pVideo->D3DCleanup();
+		delete m_pCFFmpeg->m_pVideo;
+		delete m_pCFFmpeg;
+		m_pCFFmpeg = nullptr;
 	}
 	
 	Invalidate();
@@ -471,7 +441,7 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	m_pVDecoder->video_refresh_timer();
+	m_pCFFmpeg->video_refresh_timer();
 
 
 	CDialogEx::OnTimer(nIDEvent);

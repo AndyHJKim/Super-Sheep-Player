@@ -74,16 +74,19 @@ public:
 	int DecodeAudioFrame();
 	int DecodeVideoFrame();
 
-	//
+	//패킷 큐 관련 함수
 	int packet_queue_put(PacketQueue *q, AVPacket *pkt);
 	void packet_queue_init(PacketQueue *q);
 	int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block);
 
+	//오디오 디코더/비디오 디코더 스레드
 	static int threadAudio(CFFmpeg *ffmpeg);
 	static int threadVideo(CFFmpeg * ffmpeg);
 
+	//비디오 타이머 갱신
 	void video_refresh_timer();
 
+	//오디오/비디오 클럭 관련 함수
 	static int get_buffer(struct AVCodecContext *c, AVFrame *pic, int flags);
 	double synchronize_video(AVFrame *src_frame, double pts);
 	double get_audio_clock();
@@ -100,19 +103,10 @@ public:
 	AVFrame *   avAudioFrame;
 	AVPacket	avPacket;
 
-	const int decodeType;
-
 	int m_nAudioStreamIndex;
 	int m_nVideoStreamIndex;
 
-	bool audioDecoded;
-	bool videoDecoded;
-
 	enum AVPixelFormat pixelFormat;
-
-	UINT8 *	videoData[4] = { NULL };
-	int		videoLinesize[4];
-	int		videoBuffersize;
 
 	static int videoWidth;
 	static int videoHeight;
@@ -126,26 +120,15 @@ public:
 	CD3DRenderer *m_pVideo;
 
 	
-
-
-
-
-
 	double          audio_clock;
-	AVStream        *audio_st;
 	PacketQueue     audioq;
 	AVPacket		audio_pkt;
-	//uint8_t         audio_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2];
-	unsigned int    audio_buf_size;
-	unsigned int    audio_buf_index;
 	uint8_t         *audio_pkt_data;
 	int             audio_pkt_size;
-	int             audio_hw_buf_size;
 	double          frame_timer;
 	double          frame_last_pts;
 	double          frame_last_delay;
 	double          video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
-	AVStream        *video_st;
 	PacketQueue     videoq;
 
 	VideoPicture    pictq[VIDEO_PICTURE_QUEUE_SIZE];
@@ -153,8 +136,8 @@ public:
 	std::mutex       pictq_mutex;
 	std::condition_variable       pictq_cond;
 
-	std::thread      parse_tid;
-	std::thread      video_tid;
+	std::thread audioDecodeThread;
+	std::thread videoDecodeThread;
 
 	uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
 	

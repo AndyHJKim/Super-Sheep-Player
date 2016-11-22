@@ -38,13 +38,8 @@ public:
 protected:
 	HICON m_hIcon;
 	
-// 	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
-// 	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
 
-	CWinThread *	m_pVideoDecodeThread;
-	CWinThread *	m_pAudioDecodeThread;
-	CWinThread *	m_pADThread;	// 오디오 디코더&디먹서 스레드 객체
-	CWinThread *	m_pVDThread;	// 비디오 디코더&디먹서 스레드 객체
+	CWinThread *	m_pPlayThread;
 
 	CRect		m_rectPrevWindow;	// 윈도우 상태 좌표
 	int			m_nWindowded;		// 윈도우 상태 스타일
@@ -61,9 +56,6 @@ protected:
 public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	static	UINT FFmpegDecoderThread(LPVOID _method);
-	static	UINT AudioRendererThread(LPVOID _method);
-	static	UINT D3DVideoRendererThread(LPVOID _method);
-	static  UINT CPlayerDlg::FFmpegAudioDecodeThread(LPVOID _method);
 
 	bool IsFullScreen() { return m_bIsFullScreen; }
 
@@ -76,8 +68,7 @@ public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
 
-	CFFmpeg *		m_pADecoder;	// FFmpeg 오디오 디코더&디먹서 객체
-	CFFmpeg *		m_pVDecoder;	// FFmpeg 비디오 디코더&디먹서 객체
+	CFFmpeg *		m_pCFFmpeg;	// FFmpeg 비디오 디코더&디먹서 객체
 
 	CRect picRect;		// 영상 영역
 	CRect toolbarRect;	// 툴바 영역
