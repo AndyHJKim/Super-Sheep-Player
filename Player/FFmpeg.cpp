@@ -348,8 +348,16 @@ int CFFmpeg::DecodeAudioFrame()
 		audio_pkt.data += ret;
 		audio_pkt.size -= ret;
 
-		audio_clock += (double)avAudioFrame->nb_samples /
+		/*audio_clock += (double)avAudioFrame->nb_samples /
+			(double)avAudioStream->codec->sample_rate;*/
+
+		if (avAudioFrame->pts != AV_NOPTS_VALUE) {
+			audio_clock = avAudioFrame->pts * av_q2d(avAudioStream->time_base);
+		}
+		else if (avAudioFrame->pts == AV_NOPTS_VALUE) {
+			audio_clock += (double)avAudioFrame->nb_samples /
 			(double)avAudioStream->codec->sample_rate;
+		}
 	}
 
 	/* next packet */
@@ -393,12 +401,23 @@ int CFFmpeg::DecodeVideoFrame()
 			return ret;
 		}
 
-		if (video_pkt.dts == AV_NOPTS_VALUE
+		//if (video_pkt.dts == AV_NOPTS_VALUE
+		//	&& avVideoFrame->opaque && *(uint64_t*)avVideoFrame->opaque != AV_NOPTS_VALUE) {
+		//	pts = *(uint64_t *)avVideoFrame->opaque;
+		//}
+		//else if (video_pkt.dts != AV_NOPTS_VALUE) {
+		//	pts = video_pkt.dts;
+		//}
+		//else {
+		//	pts = 0;
+		//}
+
+		if (avVideoFrame->pts == AV_NOPTS_VALUE
 			&& avVideoFrame->opaque && *(uint64_t*)avVideoFrame->opaque != AV_NOPTS_VALUE) {
 			pts = *(uint64_t *)avVideoFrame->opaque;
 		}
-		else if (video_pkt.dts != AV_NOPTS_VALUE) {
-			pts = video_pkt.dts;
+		else if (avVideoFrame->pts != AV_NOPTS_VALUE) {
+			pts = avVideoFrame->pts;
 		}
 		else {
 			pts = 0;
