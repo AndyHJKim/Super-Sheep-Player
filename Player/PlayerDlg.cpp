@@ -298,10 +298,12 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 			break;
 
 		case VK_LEFT:
-			m_pCFFmpeg->stream_seek(-5);
+			m_sliderSeek.SetPos(m_sliderVolume.GetPos() - 10000);
+			progTick -= 10000;
 			break;
 		case VK_RIGHT:
-			m_pCFFmpeg->stream_seek(+5);
+			m_sliderSeek.SetPos(m_sliderVolume.GetPos() + 10000);
+			progTick += 10000;
 			break;
 		case VK_UP:
 			m_sliderVolume.SetPos(m_sliderVolume.GetPos() + 10);

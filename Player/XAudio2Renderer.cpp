@@ -42,32 +42,31 @@ bool AudioRenderer::XAudio2Initialize(HWND hwnd, int channels, int sample_rate) 
 	this->channels = channels;
 	this->sample_rate = sample_rate;
 
+	WAVEFORMATEX format = { 0 };
+	format.wFormatTag = WAVE_FORMAT_PCM;
+	format.nChannels = channels;
+	format.wBitsPerSample = 16;
+	format.nSamplesPerSec = sample_rate;
+	format.nBlockAlign = format.wBitsPerSample / 8 * format.nChannels;
+	format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+	ret = m_pAudio->CreateSourceVoice(
+		&m_pVoice,
+		&format,
+		0,
+		XAUDIO2_DEFAULT_FREQ_RATIO,
+		&callback
+		);
+	if (FAILED(ret)) {
+		printf("error CreateSourceVoice ret=%d\n", ret);
+	}
+	m_pVoice->Start();
+
 	return true;
 }
 
 int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 	int ret;
 
-	if (m_pVoice == NULL) {
-		WAVEFORMATEX format = { 0 };
-		format.wFormatTag = WAVE_FORMAT_PCM;
-		format.nChannels = channels;
-		format.wBitsPerSample = 16;
-		format.nSamplesPerSec = sample_rate;
-		format.nBlockAlign = format.wBitsPerSample / 8 * format.nChannels;
-		format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
-		ret = m_pAudio->CreateSourceVoice(
-			&m_pVoice,
-			&format,
-			0,                          
-			XAUDIO2_DEFAULT_FREQ_RATIO,
-			&callback                  
-			);
-		if (FAILED(ret)) {
-			printf("error CreateSourceVoice ret=%d\n", ret);
-		}
-		m_pVoice->Start();
-	}
 	m_pVoice->SetVolume(m_volume);
 	if (m_dpBuf == NULL) {
 		m_dpBuf = new unsigned char*[2];
@@ -102,6 +101,8 @@ int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 
 void AudioRenderer::XAudio2Cleanup() {
 	m_pVoice->Stop();
+	m_pVoice->DestroyVoice();
+	m_pAudio->Release();
 	CoUninitialize();
 }
 

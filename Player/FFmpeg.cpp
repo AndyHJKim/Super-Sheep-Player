@@ -281,7 +281,8 @@ int CFFmpeg::Decoder()
 		}
 
 		if (m_seek_req) {
-			AVRational time_base_q = { 1, AV_TIME_BASE };
+			//AVRational time_base_q = { 1, AV_TIME_BASE };
+			AVRational time_base_q = { 1, 1 };
 			int64_t seek_target = av_rescale_q(m_seek_pos, time_base_q, avVideoStream->time_base);
 
 
@@ -713,7 +714,8 @@ void CFFmpeg::stream_seek(int move_position) {
 		double pos = move_position;
 
 		
-		m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+		//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+		m_seek_pos = (int64_t)pos;
 		m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
 		m_seek_req = 1;
 	}
