@@ -59,6 +59,7 @@ CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_bSeek = false;
+	seekTick = 0;
 }
 
 void CPlayerDlg::DoDataExchange(CDataExchange* pDX)
@@ -288,6 +289,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 			}
 			else if (eVideo == RENDER_STATE_PAUSED)
 			{
+				strtTick = clock();
 				eVideo = RENDER_STATE_STARTED;
 				m_pCFFmpeg->m_pAudio->XAudio2Resume();
 				m_pCFFmpeg->frame_timer = av_gettime() / 1000000.0;
@@ -295,7 +297,6 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				ResumeThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 				ResumeThread(m_pCFFmpeg->videoDecodeThread.native_handle());
 				ResumeThread(m_pPlayThread->m_hThread);
-				strtTick = clock();
 			}
 			break;
 
@@ -394,16 +395,17 @@ void CPlayerDlg::OnOpenFile()
 		m_pPlayThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
 
-		m_dVideoDuration =
+		/*m_dVideoDuration =
 			av_q2d(m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->time_base)
-			* m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->duration;
+			* m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->duration;*/
+		m_dVideoDuration = m_pCFFmpeg->avFormatCtx->duration / AV_TIME_BASE;
 
 		CString strDur;
 		strDur.Format(_T("00:00:00 / %02d:%02d:%02d"),
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
-		m_sliderSeek.SetPageSize(m_dVideoDuration);
+		//m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
 		strtTick = clock();
