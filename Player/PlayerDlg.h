@@ -1,6 +1,7 @@
 
 // PlayerDlg.h : 플레이어 메인 헤더
 //
+
 extern "C" {
 #include <libavutil/time.h>
 }
@@ -34,7 +35,7 @@ protected:
 	HICON m_hIcon;
 	
 
-	CWinThread *	m_pPlayThread;
+	CWinThread *	m_pDecodeThread;
 
 	CRect		m_rectPrevWindow;	// 윈도우 상태 좌표
 	int			m_nWindowded;		// 윈도우 상태 스타일

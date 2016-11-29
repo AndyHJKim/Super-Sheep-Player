@@ -39,6 +39,7 @@ extern "C" {
 #define AV_SYNC_THRESHOLD 0.01
 #define AV_NOSYNC_THRESHOLD 10.0
 
+
 typedef struct PacketQueue {
 	AVPacketList *first_pkt, *last_pkt;
 	int nb_packets;
@@ -47,15 +48,12 @@ typedef struct PacketQueue {
 	std::condition_variable *cond;
 } PacketQueue;
 
-
 typedef struct VideoPicture {
 	UINT8 *	videoData[4] = { NULL };
 	int		videoLinesize[4];
 
 	double pts;
 } VideoPicture;
-
-
 
 
 // FFmpeg 클래스
@@ -95,7 +93,6 @@ public:
 	void stream_seek(int rel);
 
 	void packet_queue_flush(PacketQueue *q);
-
 
 
 public:
@@ -147,9 +144,9 @@ public:
 
 	uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
 
-	int m_seek_req;		//		찾을지 플래그
-	int m_seek_flags;		//		앞으로 찾을지 뒤로 찾을지 플래그
-	int64_t m_seek_pos;		//		찾을 위치
-	AVPacket flush_pkt;		//		버퍼 초기화하기 위핸 패킷
+	int m_seek_req;			//	찾을지 플래그
+	int m_seek_flags;		//	앞으로 찾을지 뒤로 찾을지 플래그
+	int64_t m_seek_pos;		//	찾을 위치
+	AVPacket flush_pkt;		//	버퍼 초기화하기 위핸 패킷
 };
 

@@ -106,11 +106,13 @@ void AudioRenderer::XAudio2Cleanup() {
 }
 
 void AudioRenderer::XAudio2Pause() {
-	m_pVoice->Stop();
+	if(m_pVoice != nullptr)
+		m_pVoice->Stop();
 }
 
 void AudioRenderer::XAudio2Resume() {
-	m_pVoice->Start();
+	if (m_pVoice != nullptr)
+		m_pVoice->Start();
 }
 
 void AudioRenderer::XAudio2SetVolume(float volume) {

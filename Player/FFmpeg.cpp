@@ -121,7 +121,7 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 				int ret = av_image_alloc(pictq[i].videoData, pictq[i].videoLinesize,
 					videoWidth, videoHeight, pixelFormat, 1);
 			}
-			
+
 			if (ret < 0)
 			{
 				AfxMessageBox(_T("ERROR: allocating raw video buffer"));
@@ -272,10 +272,10 @@ int CFFmpeg::Decoder()
 	videoDecodeThread = std::thread(threadVideo, this);
 
 
-		// 프레임 읽기
+	// 프레임 읽기
 	while (1)
 	{
-		if (audioq.nb_packets >= 10 || videoq.nb_packets >= 10 ) {
+		if (audioq.nb_packets >= 10 || videoq.nb_packets >= 10) {
 			Sleep(10);
 			//continue;
 		}
@@ -285,7 +285,7 @@ int CFFmpeg::Decoder()
 			int64_t seek_target = av_rescale_q(m_seek_pos, time_base_q, avVideoStream->time_base);
 
 
-			if (av_seek_frame(avFormatCtx, m_nVideoStreamIndex, seek_target, m_seek_flags)<0)
+			if (av_seek_frame(avFormatCtx, m_nVideoStreamIndex, seek_target, m_seek_flags) < 0)
 			{
 				AfxMessageBox(_T("ERROR: Seeking frame"));
 			}
@@ -294,8 +294,8 @@ int CFFmpeg::Decoder()
 			packet_queue_put(&audioq, &flush_pkt);
 			packet_queue_flush(&videoq);
 			packet_queue_put(&videoq, &flush_pkt);
-			m_seek_req = 0;	
-		
+			m_seek_req = 0;
+
 		}
 
 
@@ -384,7 +384,7 @@ int CFFmpeg::DecodeAudioFrame()
 		}
 		else if (avAudioFrame->pts == AV_NOPTS_VALUE) {
 			audio_clock += (double)avAudioFrame->nb_samples /
-			(double)avAudioStream->codec->sample_rate;
+				(double)avAudioStream->codec->sample_rate;
 		}
 	}
 
@@ -418,7 +418,7 @@ int CFFmpeg::DecodeVideoFrame()
 	AVPacket video_pkt;
 	double pts;
 
-	
+
 	while (1) {
 		if (packet_queue_get(&videoq, &video_pkt, 1) < 0) {
 			break;
