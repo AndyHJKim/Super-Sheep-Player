@@ -89,6 +89,10 @@ public:
 	double m_dVideoDuration;
 	double progTime;
 	CStatic m_sPlaytime;
+	bool m_bSeek;
+
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+//	afx_msg void OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 

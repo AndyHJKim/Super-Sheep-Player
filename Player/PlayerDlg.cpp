@@ -11,6 +11,8 @@
 #define new DEBUG_NEW
 #endif
 
+
+
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
@@ -55,6 +57,7 @@ CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
 
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_bSeek = false;
 }
 
 void CPlayerDlg::DoDataExchange(CDataExchange* pDX)
@@ -84,6 +87,8 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CPlayerDlg::OnBnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CPlayerDlg::OnBnClickedButtonPause)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
+	ON_WM_HSCROLL()
+//	ON_NOTIFY(NM_RELEASEDCAPTURE, IDC_SLIDER_SEEK, &CPlayerDlg::OnReleasedcaptureSliderSeek)
 END_MESSAGE_MAP()
 
 
@@ -131,7 +136,8 @@ BOOL CPlayerDlg::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
 	GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
 	GetDlgItem(IDC_STATIC_PLAYTIME)->SendMessage(WM_KILLFOCUS, NULL);
-
+	m_sliderVolume.SetRange(0, 100);
+	m_sliderVolume.SetPos(100);
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -290,6 +296,19 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 			}
 			break;
 
+		case VK_LEFT:
+			m_pCFFmpeg->stream_seek(-5);
+			break;
+		case VK_RIGHT:
+			m_pCFFmpeg->stream_seek(+5);
+			break;
+		case VK_UP:
+			m_sliderVolume.SetPos(m_sliderVolume.GetPos() + 10);
+			break;
+		case VK_DOWN:
+			m_sliderVolume.SetPos(m_sliderVolume.GetPos() - 10);
+			break;
+
 		default:
 			break;
 		}
@@ -361,6 +380,7 @@ void CPlayerDlg::OnOpenFile()
 
 		if (FAILED(m_pCFFmpeg->OpenMediaSource(filePath)))
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
+		m_pCFFmpeg->m_pAudio->XAudio2SetVolume(((float)m_sliderVolume.GetPos()) / 100);
 		
 		// 재생 시작
 		eVideo = RENDER_STATE_STARTED;
@@ -380,10 +400,11 @@ void CPlayerDlg::OnOpenFile()
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
+		m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
 		strtTick = clock();
-		SetTimer(1, 300, NULL);
+		SetTimer(1, 250, NULL);
 	}
 
 }
@@ -525,7 +546,7 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 		m_pCFFmpeg->video_refresh_timer();
 	}
 	else if (eVideo == RENDER_STATE_STARTED && nIDEvent == 1)
-	{
+	{	
 		currTick = clock() - strtTick + progTick;
 		m_sliderSeek.SetPos(currTick);
 		CString strDur;
@@ -534,7 +555,7 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
-
+		
 		if (currTick / 3600000000 == (int)m_dVideoDuration / 3600
 			&& currTick / 60000 % 60 == (int)m_dVideoDuration / 60 % 60
 			&& currTick / 1000 % 60 == (int)m_dVideoDuration % 60)
@@ -606,3 +627,38 @@ void CPlayerDlg::OnBnClickedButtonStop()
 	GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
 }
 
+void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	if (pScrollBar)
+	{
+		// 어떤 슬라이더인지 검사
+		if (pScrollBar == (CScrollBar*)&m_sliderVolume){
+			float volume = m_sliderVolume.GetPos();
+			if (m_pCFFmpeg)
+				m_pCFFmpeg->m_pAudio->XAudio2SetVolume(volume / 100);
+		}
+		if (pScrollBar == (CScrollBar *)&m_sliderSeek) {
+			progTick = m_sliderSeek.GetPos();
+			strtTick = clock();
+			m_pCFFmpeg->stream_seek(progTick / 1000);
+		}
+	}
+
+
+	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
+}
+
+
+
+
+
+//void CPlayerDlg::OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult)
+//{
+//	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+//	progTick = m_sliderSeek.GetPos();
+//	strtTick = clock();
+//	m_pCFFmpeg->stream_seek(progTick / 1000);
+//
+//	*pResult = 0;
+//}

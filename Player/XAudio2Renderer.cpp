@@ -9,6 +9,7 @@ AudioRenderer::AudioRenderer() {
 	m_dpBuf = NULL;
 	m_first_submit = true;
 	m_buf_cnt = 0;
+	m_volume = 0;
 }
 
 AudioRenderer::~AudioRenderer()
@@ -67,7 +68,7 @@ int AudioRenderer::XAudio2Render(unsigned char *srcBuffer, DWORD bufSize) {
 		}
 		m_pVoice->Start();
 	}
-	
+	m_pVoice->SetVolume(m_volume);
 	if (m_dpBuf == NULL) {
 		m_dpBuf = new unsigned char*[2];
 		m_dpBuf[0] = new unsigned char[bufSize];
@@ -110,4 +111,8 @@ void AudioRenderer::XAudio2Pause() {
 
 void AudioRenderer::XAudio2Resume() {
 	m_pVoice->Start();
+}
+
+void AudioRenderer::XAudio2SetVolume(float volume) {
+	m_volume = volume;
 }

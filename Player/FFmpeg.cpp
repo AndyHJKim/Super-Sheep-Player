@@ -34,8 +34,12 @@ CFFmpeg::CFFmpeg(const int type)
 	, pictq_windex(0)
 	, pictq_size(0)
 	, pictq_rindex(0)
+	, m_seek_flags(0)
+	, m_seek_req(0)
+	, m_seek_pos(0)
 {
 	av_register_all();
+	avformat_network_init();
 }
 
 
@@ -69,10 +73,12 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 		}
 	}
 
+
 	// 입력 스트림 하나를 열고 헤더 읽기
 	if (SUCCEEDED(hr))
 	{
 		if (avformat_open_input(&avFormatCtx, (CStringA)filePath, NULL, NULL) < 0)
+		/*if(avformat_open_input(&avFormatCtx, "rtsp://127.0.0.1:8554/", NULL, NULL)<0)*/
 		{
 			AfxMessageBox(_T("ERROR: opening input stream"));
 			hr = E_FAIL; // 파일 열기 실패
@@ -233,9 +239,11 @@ HRESULT CFFmpeg::InitCodecContext(
 	// 스트림 인덱스 초기화
 	*streamIdx = streamIndex;
 
-
+	
 	packet_queue_init(&audioq);
 	packet_queue_init(&videoq);
+	av_init_packet(&flush_pkt);
+	flush_pkt.data = (uint8_t *)"flush";
 
 	return hr;
 }
@@ -266,6 +274,24 @@ int CFFmpeg::Decoder()
 		if (audioq.nb_packets >= 10 || videoq.nb_packets >= 10 ) {
 			Sleep(10);
 			//continue;
+		}
+
+		if (m_seek_req) {
+			AVRational time_base_q = { 1, AV_TIME_BASE };
+			int64_t seek_target = av_rescale_q(m_seek_pos, time_base_q, avVideoStream->time_base);
+
+
+			if (av_seek_frame(avFormatCtx, m_nVideoStreamIndex, seek_target, m_seek_flags)<0)
+			{
+				AfxMessageBox(_T("ERROR: Seeking frame"));
+			}
+
+			packet_queue_flush(&audioq);
+			packet_queue_put(&audioq, &flush_pkt);
+			packet_queue_flush(&videoq);
+			packet_queue_put(&videoq, &flush_pkt);
+			m_seek_req = 0;	
+		
 		}
 
 
@@ -364,6 +390,10 @@ int CFFmpeg::DecodeAudioFrame()
 	if (packet_queue_get(&audioq, &audio_pkt, 1) < 0) {
 		return -1;
 	}
+	if (audio_pkt.data == flush_pkt.data) {
+		avcodec_flush_buffers(avAudioCodecCtx);
+		return 1;
+	}
 	audio_pkt_data = audio_pkt.data;
 	audio_pkt_size = audio_pkt.size;
 
@@ -390,6 +420,22 @@ int CFFmpeg::DecodeVideoFrame()
 	while (1) {
 		if (packet_queue_get(&videoq, &video_pkt, 1) < 0) {
 			break;
+		}
+		if (video_pkt.data == flush_pkt.data) {
+			avcodec_flush_buffers(avVideoCodecCtx);
+			std::unique_lock<std::mutex> lock(pictq_mutex);
+
+			pictq_rindex = 0;
+			pictq_windex = 0;
+			pictq_size = 0;
+			/*av_free(pictq->videoData);
+			for (int i = 0; i < VIDEO_PICTURE_QUEUE_SIZE; i++) {
+
+				int ret = av_image_alloc(pictq[i].videoData, pictq[i].videoLinesize,
+					videoWidth, videoHeight, pixelFormat, 1);
+			}*/
+			lock.unlock();
+			return 1;
 		}
 		pts = 0;
 
@@ -461,7 +507,7 @@ int CFFmpeg::DecodeVideoFrame()
 int CFFmpeg::packet_queue_put(PacketQueue *q, AVPacket *pkt) {
 
 	AVPacketList *pkt1 = nullptr;
-	if (av_dup_packet(pkt) < 0) {
+	if (pkt != &flush_pkt && av_dup_packet(pkt) < 0) {
 		return -1;
 	}
 	pkt1 = (AVPacketList *)av_malloc(sizeof(AVPacketList));
@@ -655,5 +701,34 @@ void CFFmpeg::cleanUp()
 	avcodec_free_context(&avAudioCodecCtx);		// Audio Codec Context 반환
 	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
 	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
+	av_packet_unref(&flush_pkt);
+}
 
+void CFFmpeg::stream_seek(int move_position) {
+	if (!m_seek_req) {
+		/*double pos = video_clock;
+		pos += move_position;*/
+		double pos = move_position;
+
+		
+		m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+		m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
+		m_seek_req = 1;
+	}
+}
+
+void CFFmpeg::packet_queue_flush(PacketQueue *q) {
+	AVPacketList *pkt, *pkt1;
+
+	std::unique_lock<std::mutex> lock(*q->mutex);
+	for (pkt = q->first_pkt; pkt != NULL; pkt = pkt1) {
+		pkt1 = pkt->next;
+		av_free_packet(&pkt->pkt);
+		av_freep(&pkt);
+	}
+	q->last_pkt = NULL;
+	q->first_pkt = NULL;
+	q->nb_packets = 0;
+	q->size = 0;
+	lock.unlock();
 }
