@@ -5,7 +5,10 @@
 #include "stdafx.h"
 #include "Player.h"
 #include "PlayerDlg.h"
+#include "MediaInfoDlg.h"
 #include "afxdialogex.h"
+
+#include <conio.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -90,6 +93,8 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_HSCROLL()
 //	ON_NOTIFY(NM_RELEASEDCAPTURE, IDC_SLIDER_SEEK, &CPlayerDlg::OnReleasedcaptureSliderSeek)
+ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
+ON_WM_ACTIVATE()
 END_MESSAGE_MAP()
 
 
@@ -281,7 +286,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				KillTimer(0);
 				SuspendThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 				SuspendThread(m_pCFFmpeg->videoDecodeThread.native_handle());
-				SuspendThread(m_pPlayThread->m_hThread);
+				SuspendThread(m_pDecodeThread->m_hThread);
 				progTick = currTick;
 			}
 			else if (eVideo == RENDER_STATE_PAUSED)
@@ -293,7 +298,7 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 				SetTimer(0, 1, NULL);
 				ResumeThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 				ResumeThread(m_pCFFmpeg->videoDecodeThread.native_handle());
-				ResumeThread(m_pPlayThread->m_hThread);
+				ResumeThread(m_pDecodeThread->m_hThread);
 			}
 			break;
 
@@ -391,13 +396,13 @@ void CPlayerDlg::OnOpenFile()
 		m_btnStop.EnableWindow(TRUE);
 		m_sliderSeek.EnableWindow(TRUE);
 
-		m_pPlayThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
+		m_pDecodeThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
 
 		/*m_dVideoDuration =
 			av_q2d(m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->time_base)
 			* m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->duration;*/
-		m_dVideoDuration = m_pCFFmpeg->avFormatCtx->duration / AV_TIME_BASE;
+		m_dVideoDuration = (double)m_pCFFmpeg->avFormatCtx->duration / AV_TIME_BASE;
 
 		CString strDur;
 		strDur.Format(_T("00:00:00 / %02d:%02d:%02d"),
@@ -419,18 +424,18 @@ void CPlayerDlg::OnOpenFile()
 void CPlayerDlg::OnClose()
 {
 	eVideo = RENDER_STATE_STOPPED;
-	if (m_pPlayThread != nullptr)
+	if (m_pDecodeThread != nullptr)
 	{
 		m_pCFFmpeg->m_pAudio->XAudio2Pause();
 		KillTimer(0);
 		SuspendThread(m_pCFFmpeg->audioDecodeThread.native_handle());
 		SuspendThread(m_pCFFmpeg->videoDecodeThread.native_handle());
-		SuspendThread(m_pPlayThread->m_hThread);
+		SuspendThread(m_pDecodeThread->m_hThread);
 
 		TerminateThread(m_pCFFmpeg->audioDecodeThread.native_handle(), 0);
 		TerminateThread(m_pCFFmpeg->videoDecodeThread.native_handle(), 0);
-		TerminateThread(m_pPlayThread->m_hThread, 0);
-		m_pPlayThread = nullptr;
+		TerminateThread(m_pDecodeThread->m_hThread, 0);
+		m_pDecodeThread = nullptr;
 	}
 
 	if (m_pCFFmpeg != nullptr)
@@ -453,6 +458,15 @@ void CPlayerDlg::OnClose()
 
 		Invalidate();
 	}
+}
+
+
+
+// 파일 → 재생 정보 메뉴
+void CPlayerDlg::OnReport()
+{
+	CMediaInfoDlg infoDlg;
+	infoDlg.DoModal();
 }
 
 
@@ -638,7 +652,7 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	{
 		// 어떤 슬라이더인지 검사
 		if (pScrollBar == (CScrollBar*)&m_sliderVolume){
-			float volume = m_sliderVolume.GetPos();
+			float volume = (float)m_sliderVolume.GetPos();
 			if (m_pCFFmpeg)
 				m_pCFFmpeg->m_pAudio->XAudio2SetVolume(volume / 100);
 		}
@@ -666,3 +680,14 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 //
 //	*pResult = 0;
 //}
+
+
+void CPlayerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+	CDialogEx::OnActivate(nState, pWndOther, bMinimized);
+
+	if (nState == WA_INACTIVE)
+	{
+		SetFocus();
+	}
+}

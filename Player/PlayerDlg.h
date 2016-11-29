@@ -1,6 +1,7 @@
 
 // PlayerDlg.h : 플레이어 메인 헤더
 //
+
 extern "C" {
 #include <libavutil/time.h>
 }
@@ -34,7 +35,7 @@ protected:
 	HICON m_hIcon;
 	
 
-	CWinThread *	m_pPlayThread;
+	CWinThread *	m_pDecodeThread;
 
 	CRect		m_rectPrevWindow;	// 윈도우 상태 좌표
 	int			m_nWindowded;		// 윈도우 상태 스타일
@@ -56,6 +57,7 @@ public:
 
 	afx_msg void OnOpenFile();
 	afx_msg void OnClose();
+	afx_msg void OnReport();
 	afx_msg void OnQuit();
 	afx_msg void OnPlayPause();
 	afx_msg void OnFullscreen();
@@ -94,6 +96,7 @@ public:
 
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 //	afx_msg void OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
 };
 
 
