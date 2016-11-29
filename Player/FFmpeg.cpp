@@ -130,6 +130,21 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 		}
 	}
 
+	// 패킷 초기화
+	av_init_packet(&avPacket);
+	avPacket.data = NULL;
+	avPacket.size = 0;
+
+	// 패킷 큐 초기화
+	packet_queue_init(&audioq);
+	packet_queue_init(&videoq);
+
+	// 플러시 패킷 초기화
+	av_init_packet(&flush_pkt);
+	flush_pkt.data = (uint8_t *)"flush";
+
+
+
 	// 프레임 할당
 	if (SUCCEEDED(hr))
 	{
@@ -231,19 +246,8 @@ HRESULT CFFmpeg::InitCodecContext(
 		}
 	}
 
-	// 패킷 초기화
-	av_init_packet(&avPacket);
-	avPacket.data = NULL;
-	avPacket.size = 0;
-
 	// 스트림 인덱스 초기화
 	*streamIdx = streamIndex;
-
-	
-	packet_queue_init(&audioq);
-	packet_queue_init(&videoq);
-	av_init_packet(&flush_pkt);
-	flush_pkt.data = (uint8_t *)"flush";
 
 	return hr;
 }
@@ -317,18 +321,16 @@ int CFFmpeg::DecodeAudioFrame()
 {
 
 	int ret = 0;
-	int decoded = avPacket.size;
-	int *gotFrame = nullptr;
 
 	while (audio_pkt.size > 0)
 	{
 		//avFrame = av_frame_alloc();
-		int ret = 0;
+		int decode_size = 0;
 		int decoded = avPacket.size;
 		int gotFrame;
 
 		// 오디오 프레임 디코딩
-		ret = avcodec_decode_audio4(avAudioCodecCtx, avAudioFrame, &gotFrame, &audio_pkt);
+		decode_size = avcodec_decode_audio4(avAudioCodecCtx, avAudioFrame, &gotFrame, &audio_pkt);
 		if (ret < 0)
 		{
 			AfxMessageBox(_T("ERROR: decoding audio frame"));
@@ -350,7 +352,7 @@ int CFFmpeg::DecodeAudioFrame()
 				av_opt_set_int(m_pSwrCtx, "out_sample_rate", avAudioFrame->sample_rate, 0);
 				av_opt_set_sample_fmt(m_pSwrCtx, "in_sample_fmt", (AVSampleFormat)avAudioFrame->format, 0);
 				av_opt_set_sample_fmt(m_pSwrCtx, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
-				ret = swr_init(m_pSwrCtx);
+				swr_init(m_pSwrCtx);
 				if (ret < 0) {
 					AfxMessageBox(_T("swr_init error ret=%08x.\n"));
 					return ret;
@@ -360,7 +362,7 @@ int CFFmpeg::DecodeAudioFrame()
 				m_swr_buf_len = buf_size;
 			}
 
-			ret = swr_convert(m_pSwrCtx, &m_pSwr_buf, avAudioFrame->nb_samples, (const uint8_t**)avAudioFrame->extended_data, avAudioFrame->nb_samples);
+			swr_convert(m_pSwrCtx, &m_pSwr_buf, avAudioFrame->nb_samples, (const uint8_t**)avAudioFrame->extended_data, avAudioFrame->nb_samples);
 			if (ret < 0) {
 				AfxMessageBox(_T("swr_convert error ret=%08x.\n"));
 				return ret;
@@ -371,8 +373,8 @@ int CFFmpeg::DecodeAudioFrame()
 
 		if (ret < 0)
 			break;
-		audio_pkt.data += ret;
-		audio_pkt.size -= ret;
+		audio_pkt.data += decode_size;
+		audio_pkt.size -= decode_size;
 
 		/*audio_clock += (double)avAudioFrame->nb_samples /
 			(double)avAudioStream->codec->sample_rate;*/

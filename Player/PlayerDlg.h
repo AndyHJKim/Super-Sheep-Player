@@ -85,6 +85,7 @@ public:
 	clock_t strtTick;
 	clock_t currTick;
 	clock_t progTick;
+	clock_t seekTick;
 
 	double m_dVideoDuration;
 	double progTime;
