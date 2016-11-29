@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "Player.h"
 #include "PlayerDlg.h"
+#include "MediaInfoDlg.h"
 #include "afxdialogex.h"
 
 #ifdef _DEBUG
@@ -89,6 +90,8 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_HSCROLL()
 //	ON_NOTIFY(NM_RELEASEDCAPTURE, IDC_SLIDER_SEEK, &CPlayerDlg::OnReleasedcaptureSliderSeek)
+ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
+ON_WM_ACTIVATE()
 END_MESSAGE_MAP()
 
 
@@ -453,6 +456,15 @@ void CPlayerDlg::OnClose()
 
 
 
+// 파일 → 재생 정보 메뉴
+void CPlayerDlg::OnReport()
+{
+	CMediaInfoDlg infoDlg;
+	infoDlg.DoModal();
+}
+
+
+
 // 파일 → 종료 메뉴
 void CPlayerDlg::OnQuit()
 {
@@ -662,3 +674,14 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 //
 //	*pResult = 0;
 //}
+
+
+void CPlayerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+	CDialogEx::OnActivate(nState, pWndOther, bMinimized);
+
+	if (nState == WA_INACTIVE)
+	{
+		SetFocus();
+	}
+}

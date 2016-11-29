@@ -56,6 +56,7 @@ public:
 
 	afx_msg void OnOpenFile();
 	afx_msg void OnClose();
+	afx_msg void OnReport();
 	afx_msg void OnQuit();
 	afx_msg void OnPlayPause();
 	afx_msg void OnFullscreen();
@@ -93,6 +94,7 @@ public:
 
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 //	afx_msg void OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
 };
 
 
