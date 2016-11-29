@@ -1,14 +1,11 @@
 
 // PlayerDlg.h : 플레이어 메인 헤더
 //
-extern "C" {
-#include <libavutil/time.h>
-}
+
 #pragma once
+
 #include <queue>
 #include "FFmpeg.h"
-#include "XAudio2Renderer.h"
-#include "D3DRenderer.h"
 #include "afxwin.h"
 #include "afxcmn.h"
 
@@ -89,6 +86,7 @@ public:
 	double m_dVideoDuration;
 	double progTime;
 	CStatic m_sPlaytime;
+	afx_msg void OnReport();
 };
 
 

@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "Player.h"
 #include "PlayerDlg.h"
+#include "MediaInfoDlg.h"
 #include "afxdialogex.h"
 
 #ifdef _DEBUG
@@ -84,6 +85,7 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CPlayerDlg::OnBnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CPlayerDlg::OnBnClickedButtonPause)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
+	ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
 END_MESSAGE_MAP()
 
 
@@ -124,7 +126,6 @@ BOOL CPlayerDlg::OnInitDialog()
 	MoveWindow(NULL, NULL, 960, 640);
 	GdiplusStartup(&m_GdiplusToken, &m_GdiplusStartupInput, NULL);
 
-	//GetDlgItem(IDC_STATIC_FRAME);
 	GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
 	GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
 	GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
@@ -367,10 +368,12 @@ void CPlayerDlg::OnOpenFile()
 		m_btnPause.EnableWindow(TRUE);
 		m_btnStop.EnableWindow(TRUE);
 		m_sliderSeek.EnableWindow(TRUE);
+		m_sPlaytime.EnableWindow(TRUE);
 
 		m_pPlayThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
 
+		// 
 		m_dVideoDuration =
 			av_q2d(m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->time_base)
 			* m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->duration;
@@ -420,6 +423,8 @@ void CPlayerDlg::OnClose()
 		m_btnPause.EnableWindow(FALSE);
 		m_btnStop.EnableWindow(FALSE);
 		m_sliderSeek.EnableWindow(FALSE);
+		m_sPlaytime.EnableWindow(FALSE);
+
 		m_sliderSeek.SetPos(0);
 		m_sPlaytime.SetWindowTextW(_T("00:00:00 / 00:00:00"));
 
@@ -463,7 +468,6 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 	
 	if (IsWindow(m_sFrame.m_hWnd))
 	{
-		OnPlayPause();
 		picRect.right = cx;
 		picRect.bottom = cy - 80;
 		m_sFrame.MoveWindow(picRect);
@@ -472,7 +476,6 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 		toolbarRect.left = 0;
 		toolbarRect.right = cx;
 		toolbarRect.bottom = cy;
-		OnPlayPause();
 	}
 
 	if (IsWindow(m_sliderSeek.m_hWnd))
@@ -606,3 +609,11 @@ void CPlayerDlg::OnBnClickedButtonStop()
 	GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
 }
 
+
+
+
+void CPlayerDlg::OnReport()
+{
+	CMediaInfoDlg infoDlg;
+	infoDlg.DoModal();
+}

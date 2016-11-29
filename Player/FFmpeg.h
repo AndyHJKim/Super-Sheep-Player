@@ -11,20 +11,20 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "XAudio2Renderer.h"
-#include "D3DRenderer.h"
-
 // C++에서 FFmpeg
 extern "C" {
 #define __STDC_CONSTANT_MACROS
+#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/samplefmt.h>
-#include <libswresample/swresample.h>
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/time.h>
-#include <libavcodec/avcodec.h>
+#include <libavutil/samplefmt.h>
+#include <libswresample/swresample.h>
 }
+
+#include "XAudio2Renderer.h"
+#include "D3DRenderer.h"
 
 
 // 디코더 스레드 타입
@@ -38,6 +38,7 @@ extern "C" {
 
 #define AV_SYNC_THRESHOLD 0.01
 #define AV_NOSYNC_THRESHOLD 10.0
+
 
 typedef struct PacketQueue {
 	AVPacketList *first_pkt, *last_pkt;
@@ -54,7 +55,6 @@ typedef struct VideoPicture {
 
 	double pts;
 } VideoPicture;
-
 
 
 

@@ -7,6 +7,8 @@
 #include "D3DRenderer.h"
 
 
+cText * cText::TextInstance = NULL;
+
 
 // D3D 렌더러 객체 생성자
 CD3DRenderer::CD3DRenderer()
@@ -15,7 +17,6 @@ CD3DRenderer::CD3DRenderer()
 	, m_pDirect3DSurfaceRender(NULL)
 	, bitPerPixel(12)
 {
-
 }
 
 
@@ -72,6 +73,7 @@ HRESULT CD3DRenderer::D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight, RE
 
 	m_prevViewport.right = viewRect.right - 1;
 	m_prevViewport.bottom = viewRect.bottom - 1;
+
 
 	return hr;
 
@@ -157,6 +159,7 @@ HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 		m_dstViewport.bottom = docRect.Height() - 1;
 	}
 
+
 	// 화면에 표시하기 위한 최종 과정
 	IDirect3DSurface9 * pBackBuffer = NULL;
 	m_pDirect3DDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
@@ -164,8 +167,10 @@ HRESULT CD3DRenderer::D3DVideoRender(UINT8* buffer, CRect docRect)
 	m_pDirect3DDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer);
 	m_pDirect3DDevice->StretchRect(
 		m_pDirect3DSurfaceRender, NULL, pBackBuffer, NULL, D3DTEXF_LINEAR);
+
 	m_pDirect3DDevice->EndScene();
 	m_pDirect3DDevice->Present(NULL, &m_dstViewport, NULL, NULL);
+
 
 	pDest = nullptr;
 	buffer = nullptr;

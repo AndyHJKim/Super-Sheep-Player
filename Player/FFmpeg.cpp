@@ -249,7 +249,6 @@ int CFFmpeg::Decoder()
 
 	int64_t pts = 0;
 	int ret = -1;
-	int gotFrame;
 
 
 	frame_timer = (double)av_gettime() / 1000000.0;
@@ -586,7 +585,6 @@ void CFFmpeg::video_refresh_timer() {
 		
 			AfxGetMainWnd()->SetTimer(0, (int)(actual_delay * 1000 + 0.5), NULL);
 			/* show the picture! */
-			//AfxGetMainWnd()->GetClientRect(viewRect);
 			CPlayerDlg * pDlg = (CPlayerDlg*)::AfxGetMainWnd();
 			viewRect = pDlg->picRect;
 
