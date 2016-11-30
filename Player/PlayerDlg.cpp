@@ -8,7 +8,6 @@
 #include "MediaInfoDlg.h"
 #include "afxdialogex.h"
 
-#include <conio.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -569,12 +568,12 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 		m_sliderSeek.SetPos(currTick);
 		CString strDur;
 		strDur.Format(_T("%02d:%02d:%02d / %02d:%02d:%02d"),
-			currTick/3600000000, currTick/60000 % 60, currTick/1000 % 60,
+			currTick/3600000, currTick/60000 % 60, currTick/1000 % 60,
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
 		
-		if (currTick / 3600000000 == (int)m_dVideoDuration / 3600
+		if (currTick / 3600000 == (int)m_dVideoDuration / 3600
 			&& currTick / 60000 % 60 == (int)m_dVideoDuration / 60 % 60
 			&& currTick / 1000 % 60 == (int)m_dVideoDuration % 60)
 			OnClose();
