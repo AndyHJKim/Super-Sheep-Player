@@ -8,7 +8,6 @@
 #include "MediaInfoDlg.h"
 #include "afxdialogex.h"
 
-#include <conio.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -92,9 +91,9 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CPlayerDlg::OnBnClickedButtonPause)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_HSCROLL()
-//	ON_NOTIFY(NM_RELEASEDCAPTURE, IDC_SLIDER_SEEK, &CPlayerDlg::OnReleasedcaptureSliderSeek)
-ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
-ON_WM_ACTIVATE()
+	ON_MESSAGE(SLIDER_MSG, &CPlayerDlg::OnSliderUpdate)
+	ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
+	ON_WM_ACTIVATE()
 END_MESSAGE_MAP()
 
 
@@ -303,12 +302,16 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 			break;
 
 		case VK_LEFT:
-			m_sliderSeek.SetPos(m_sliderVolume.GetPos() - 10000);
-			progTick -= 10000;
+			m_bSeek = TRUE;
+			m_sliderSeek.SetPos((m_pCFFmpeg->audio_clock - 10)*1000);
+			m_pCFFmpeg->stream_seek(-10);
+			m_bSeek = FALSE;
 			break;
 		case VK_RIGHT:
-			m_sliderSeek.SetPos(m_sliderVolume.GetPos() + 10000);
-			progTick += 10000;
+			m_bSeek = TRUE;
+			m_sliderSeek.SetPos((m_pCFFmpeg->audio_clock + 10) * 1000);
+			m_pCFFmpeg->stream_seek(10);
+			m_bSeek = FALSE;
 			break;
 		case VK_UP:
 			m_sliderVolume.SetPos(m_sliderVolume.GetPos() + 10);
@@ -409,11 +412,12 @@ void CPlayerDlg::OnOpenFile()
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
-		//m_sliderSeek.SetPageSize(m_dVideoDuration);
+		m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
+		m_sliderSeek.ClearTics();
 		strtTick = clock();
-		SetTimer(1, 250, NULL);
+		SetTimer(1, 500, NULL);
 	}
 
 }
@@ -565,14 +569,17 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 	}
 	else if (eVideo == RENDER_STATE_STARTED && nIDEvent == 1)
 	{	
-		currTick = clock() - strtTick + progTick;
-		m_sliderSeek.SetPos(currTick);
-		CString strDur;
-		strDur.Format(_T("%02d:%02d:%02d / %02d:%02d:%02d"),
-			currTick/3600000000, currTick/60000 % 60, currTick/1000 % 60,
-			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
-			(int)m_dVideoDuration%60);
-		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
+		//currTick = clock() - strtTick + progTick;
+		//m_sliderSeek.SetPos(currTick);
+		//CString strDur;
+		///*strDur.Format(_T("%02d:%02d:%02d / %02d:%02d:%02d"),
+		//	currTick/3600000000, currTick/60000 % 60, currTick/1000 % 60,
+		//	(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
+		//	(int)m_dVideoDuration%60);
+		//m_sPlaytime.SetWindowText((LPCTSTR)strDur);*/
+		if (!m_bSeek) {
+			m_sliderSeek.SetPos(m_pCFFmpeg->audio_clock*1000);
+		}
 		
 		if (currTick / 3600000000 == (int)m_dVideoDuration / 3600
 			&& currTick / 60000 % 60 == (int)m_dVideoDuration / 60 % 60
@@ -657,13 +664,35 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 				m_pCFFmpeg->m_pAudio->XAudio2SetVolume(volume / 100);
 		}
 		if (pScrollBar == (CScrollBar *)&m_sliderSeek) {
-			progTick = m_sliderSeek.GetPos();
-			strtTick = clock();
-			m_pCFFmpeg->stream_seek(progTick / 1000);
+			m_bSeek = TRUE;	
+			double move;	
+			move = m_sliderSeek.GetPos() / 1000 - m_pCFFmpeg->audio_clock;
+			int z1;
+			switch (nSBCode)
+			{
+			case TB_PAGEUP:
+				z1 = 1;
+				break;
+			case TB_PAGEDOWN:
+				z1 = 1;
+				break;
+			case TB_THUMBPOSITION:
+				z1 = 1;
+				break;
+			case TB_THUMBTRACK:	
+				m_pCFFmpeg->stream_seek(move);
+				z1 = 1;
+				break;
+			case TB_ENDTRACK:
+				z1 = 1;
+				m_bSeek = FALSE;
+				break;
+			default:
+				z1 = 1;
+				break;
+			}
 		}
 	}
-
-
 	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
 }
 
@@ -690,4 +719,16 @@ void CPlayerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 	{
 		SetFocus();
 	}
+}
+
+LRESULT CPlayerDlg::OnSliderUpdate(WPARAM wParam, LPARAM lEvent) {
+	CString strDur;
+	int currTick = wParam;
+	strDur.Format(_T("%02d:%02d:%02d / %02d:%02d:%02d"),
+		currTick / 3600, currTick / 60 % 60, currTick % 60,
+		(int)m_dVideoDuration / 3600, (int)m_dVideoDuration / 60 % 60,
+		(int)m_dVideoDuration % 60);
+	m_sPlaytime.SetWindowText((LPCTSTR)strDur);
+
+	return TRUE;
 }

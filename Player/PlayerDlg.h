@@ -12,6 +12,9 @@ extern "C" {
 #include "D3DRenderer.h"
 #include "afxwin.h"
 #include "afxcmn.h"
+//#include "MySliderCtrl.h"
+
+#define SLIDER_MSG 2000
 
 
 // CPlayerDlg 대화 상자
@@ -47,6 +50,7 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	afx_msg LRESULT OnSliderUpdate(WPARAM wParam, LPARAM lEvent);
 	DECLARE_MESSAGE_MAP()
 
 public:
@@ -93,6 +97,7 @@ public:
 	double progTime;
 	CStatic m_sPlaytime;
 	bool m_bSeek;
+	double m_seekCurrSec;
 
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 //	afx_msg void OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult);

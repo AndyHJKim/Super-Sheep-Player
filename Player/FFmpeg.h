@@ -39,6 +39,8 @@ extern "C" {
 #define AV_SYNC_THRESHOLD 0.01
 #define AV_NOSYNC_THRESHOLD 10.0
 
+#define SLIDER_MSG 2000
+
 
 typedef struct PacketQueue {
 	AVPacketList *first_pkt, *last_pkt;
@@ -148,5 +150,6 @@ public:
 	int m_seek_flags;		//	앞으로 찾을지 뒤로 찾을지 플래그
 	int64_t m_seek_pos;		//	찾을 위치
 	AVPacket flush_pkt;		//	버퍼 초기화하기 위핸 패킷
+	unsigned int curr_sec;
 };
 

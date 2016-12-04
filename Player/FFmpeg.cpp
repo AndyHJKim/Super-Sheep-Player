@@ -37,6 +37,7 @@ CFFmpeg::CFFmpeg(const int type)
 	, m_seek_flags(0)
 	, m_seek_req(0)
 	, m_seek_pos(0)
+	, curr_sec(0)
 {
 	av_register_all();
 	avformat_network_init();
@@ -387,6 +388,13 @@ int CFFmpeg::DecodeAudioFrame()
 			audio_clock += (double)avAudioFrame->nb_samples /
 				(double)avAudioStream->codec->sample_rate;
 		}
+		
+		if ((int)audio_clock != curr_sec) {
+			curr_sec = audio_clock;
+			//AfxGetMainWnd()->PostMessageW(SLIDER_MSG, curr_sec, NULL);
+			//SendMessageW(AfxGetMainWnd()->m_hWnd, SLIDER_MSG, curr_sec, NULL);
+			AfxGetApp()->m_pMainWnd->PostMessageW(SLIDER_MSG, curr_sec, NULL);
+		}
 	}
 
 	/* next packet */
@@ -622,7 +630,7 @@ void CFFmpeg::video_refresh_timer() {
 					delay = 0;
 				}
 				else if (diff >= sync_threshold) {
-					delay = 2 * delay;
+					delay = 1.5 * delay;
 				}
 			}
 			frame_timer += delay;
@@ -709,9 +717,9 @@ void CFFmpeg::cleanUp()
 
 void CFFmpeg::stream_seek(int move_position) {
 	if (!m_seek_req) {
-		/*double pos = video_clock;
-		pos += move_position;*/
-		double pos = move_position;
+		double pos = video_clock;
+		pos += move_position;
+		//double pos = move_position;
 
 		
 		//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
