@@ -391,8 +391,6 @@ int CFFmpeg::DecodeAudioFrame()
 		
 		if ((int)audio_clock != curr_sec) {
 			curr_sec = audio_clock;
-			//AfxGetMainWnd()->PostMessageW(SLIDER_MSG, curr_sec, NULL);
-			//SendMessageW(AfxGetMainWnd()->m_hWnd, SLIDER_MSG, curr_sec, NULL);
 			AfxGetApp()->m_pMainWnd->PostMessageW(SLIDER_MSG, curr_sec, NULL);
 		}
 	}
@@ -715,17 +713,27 @@ void CFFmpeg::cleanUp()
 	av_packet_unref(&flush_pkt);
 }
 
-void CFFmpeg::stream_seek(int move_position) {
+void CFFmpeg::stream_seek(double move_position, bool bDrag) {
 	if (!m_seek_req) {
-		double pos = video_clock;
-		pos += move_position;
-		//double pos = move_position;
+		if (bDrag) {
+			double pos = move_position;
 
+			m_seek_pos = (int64_t)pos;
+			m_seek_flags = move_position < audio_clock ? AVSEEK_FLAG_BACKWARD : 0;
+			m_seek_req = 1;
+		}
+		else {
+			double pos = video_clock;
+			pos += move_position;
+			//double pos = move_position;
+
+
+			//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+			m_seek_pos = (int64_t)pos;
+			m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
+			m_seek_req = 1;
+		}
 		
-		//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
-		m_seek_pos = (int64_t)pos;
-		m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
-		m_seek_req = 1;
 	}
 }
 

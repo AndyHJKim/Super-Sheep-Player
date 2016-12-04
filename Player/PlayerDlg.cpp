@@ -304,13 +304,13 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 		case VK_LEFT:
 			m_bSeek = TRUE;
 			m_sliderSeek.SetPos((m_pCFFmpeg->audio_clock - 10)*1000);
-			m_pCFFmpeg->stream_seek(-10);
+			m_pCFFmpeg->stream_seek(-10, 0);
 			m_bSeek = FALSE;
 			break;
 		case VK_RIGHT:
 			m_bSeek = TRUE;
 			m_sliderSeek.SetPos((m_pCFFmpeg->audio_clock + 10) * 1000);
-			m_pCFFmpeg->stream_seek(10);
+			m_pCFFmpeg->stream_seek(10, 0);
 			m_bSeek = FALSE;
 			break;
 		case VK_UP:
@@ -325,16 +325,16 @@ BOOL CPlayerDlg::PreTranslateMessage(MSG* pMsg)
 		}
 	// 키 이벤트 처리 끝
 
-	// 마우스 이벤트 처리
-	case WM_MOUSEFIRST:
-		// 컨트롤 포커스 해제
-		GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
-		GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
-		GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
-		GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
-		GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
-		break;
-	//마우스 이벤트 처리 끝
+	//// 마우스 이벤트 처리
+	//case WM_MOUSEFIRST:
+	//	// 컨트롤 포커스 해제
+	//	GetDlgItem(IDC_SLIDER_SEEK)->SendMessage(WM_KILLFOCUS, NULL);
+	//	GetDlgItem(IDC_SLIDER_VOLUME)->SendMessage(WM_KILLFOCUS, NULL);
+	//	GetDlgItem(IDC_BUTTON_PLAY)->SendMessage(WM_KILLFOCUS, NULL);
+	//	GetDlgItem(IDC_BUTTON_PAUSE)->SendMessage(WM_KILLFOCUS, NULL);
+	//	GetDlgItem(IDC_BUTTON_STOP)->SendMessage(WM_KILLFOCUS, NULL);
+	//	break;
+	////마우스 이벤트 처리 끝
 
 	default:
 		break;
@@ -569,21 +569,13 @@ void CPlayerDlg::OnTimer(UINT_PTR nIDEvent)
 	}
 	else if (eVideo == RENDER_STATE_STARTED && nIDEvent == 1)
 	{	
-		//currTick = clock() - strtTick + progTick;
-		//m_sliderSeek.SetPos(currTick);
-		//CString strDur;
-		///*strDur.Format(_T("%02d:%02d:%02d / %02d:%02d:%02d"),
-		//	currTick/3600000000, currTick/60000 % 60, currTick/1000 % 60,
-		//	(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
-		//	(int)m_dVideoDuration%60);
-		//m_sPlaytime.SetWindowText((LPCTSTR)strDur);*/
 		if (!m_bSeek) {
 			m_sliderSeek.SetPos(m_pCFFmpeg->audio_clock*1000);
 		}
 		
-		if (currTick / 3600000000 == (int)m_dVideoDuration / 3600
-			&& currTick / 60000 % 60 == (int)m_dVideoDuration / 60 % 60
-			&& currTick / 1000 % 60 == (int)m_dVideoDuration % 60)
+		if ((int)m_pCFFmpeg->audio_clock / 3600 == (int)m_dVideoDuration / 3600
+			&& (int)m_pCFFmpeg->audio_clock / 60 % 60 == (int)m_dVideoDuration / 60 % 60
+			&& (int)m_pCFFmpeg->audio_clock % 60 == (int)m_dVideoDuration % 60)
 			OnClose();
 	}
 
@@ -663,7 +655,7 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 			if (m_pCFFmpeg)
 				m_pCFFmpeg->m_pAudio->XAudio2SetVolume(volume / 100);
 		}
-		if (pScrollBar == (CScrollBar *)&m_sliderSeek) {
+		/*if (pScrollBar == (CScrollBar *)&m_sliderSeek) {
 			m_bSeek = TRUE;	
 			double move;	
 			move = m_sliderSeek.GetPos() / 1000 - m_pCFFmpeg->audio_clock;
@@ -691,7 +683,7 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 				z1 = 1;
 				break;
 			}
-		}
+		}*/
 	}
 	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
 }

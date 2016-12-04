@@ -195,6 +195,7 @@
     <ClInclude Include="D3DRenderer.h" />
     <ClInclude Include="FFmpeg.h" />
     <ClInclude Include="MediaInfoDlg.h" />
+    <ClInclude Include="MySliderCtrl.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerDlg.h" />
     <ClInclude Include="Resource.h" />
@@ -206,6 +207,7 @@
     <ClCompile Include="D3DRenderer.cpp" />
     <ClCompile Include="FFmpeg.cpp" />
     <ClCompile Include="MediaInfoDlg.cpp" />
+    <ClCompile Include="MySliderCtrl.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="PlayerDlg.cpp" />
     <ClCompile Include="stdafx.cpp">

@@ -92,7 +92,7 @@ public:
 	double synchronize_video(AVFrame *src_frame, double pts);
 	double get_audio_clock();
 
-	void stream_seek(int rel);
+	void stream_seek(double rel, bool bDrag);
 
 	void packet_queue_flush(PacketQueue *q);
 

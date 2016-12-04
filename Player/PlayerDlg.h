@@ -9,10 +9,11 @@ extern "C" {
 #include <queue>
 #include "FFmpeg.h"
 #include "XAudio2Renderer.h"
+#include "MySliderCtrl.h"
 #include "D3DRenderer.h"
 #include "afxwin.h"
 #include "afxcmn.h"
-//#include "MySliderCtrl.h"
+
 
 #define SLIDER_MSG 2000
 
@@ -81,7 +82,7 @@ public:
 	ULONG_PTR			m_GdiplusToken;			// 리소스 출력에 사용
 
 	CStatic m_sFrame;
-	CSliderCtrl m_sliderSeek;
+	CMySliderCtrl m_sliderSeek;
 	CSliderCtrl m_sliderVolume;
 	CButton m_btnPlay;
 	CButton m_btnPause;
