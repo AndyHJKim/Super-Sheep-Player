@@ -80,7 +80,7 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 	if (SUCCEEDED(hr))
 	{
 		if (avformat_open_input(&avFormatCtx, (CStringA)filePath, NULL, NULL) < 0)
-		/*if(avformat_open_input(&avFormatCtx, "rtsp://127.0.0.1:8554/", NULL, NULL)<0)*/
+		//if(avformat_open_input(&avFormatCtx, "rtsp://127.0.0.1:8554/", NULL, NULL)<0)
 	/*	if (avformat_open_input(&avFormatCtx, "rtp://127.0.0.1:5004/", NULL, NULL)<0)*/
 		{
 			AfxMessageBox(_T("ERROR: opening input stream"));

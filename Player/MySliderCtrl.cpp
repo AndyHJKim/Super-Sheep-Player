@@ -60,11 +60,11 @@ void CMySliderCtrl::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
 	m_bClicked = TRUE;
-	CRect   rectClient, rectChannel;
-	GetClientRect(rectClient);
+	CRect  rectChannel;
 	GetChannelRect(rectChannel);
 	double   nPos =
-		(GetRangeMax() - GetRangeMin())*(double)(point.x - rectClient.left - rectChannel.left) / (double)(rectChannel.right - rectChannel.left);
+		(GetRangeMax() - GetRangeMin())*(double)(point.x - rectChannel.left) 
+		/ (double)(rectChannel.right - rectChannel.left);
 	CPlayerDlg* pMain = (CPlayerDlg*)AfxGetMainWnd();
 	pMain->m_bSeek = TRUE;
 	SetPos(nPos);
