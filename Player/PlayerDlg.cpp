@@ -415,9 +415,8 @@ void CPlayerDlg::OnOpenFile()
 		m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
-		m_sliderSeek.ClearTics();
-		strtTick = clock();
-		SetTimer(1, 500, NULL);
+		m_sliderSeek.ClearTics();	
+		//SetTimer(1, 500, NULL);
 	}
 
 }
@@ -555,7 +554,6 @@ void CPlayerDlg::OnSize(UINT nType, int cx, int cy)
 		GetDlgItem(IDC_STATIC_PLAYTIME)->ShowWindow(TRUE);
 	}
 
-	InvalidateRect(picRect);
 }
 
 

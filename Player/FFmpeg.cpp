@@ -40,6 +40,7 @@ CFFmpeg::CFFmpeg(const int type)
 	, curr_sec(0)
 {
 	av_register_all();
+	avcodec_register_all();
 	avformat_network_init();
 }
 
@@ -80,6 +81,7 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 	{
 		if (avformat_open_input(&avFormatCtx, (CStringA)filePath, NULL, NULL) < 0)
 		/*if(avformat_open_input(&avFormatCtx, "rtsp://127.0.0.1:8554/", NULL, NULL)<0)*/
+	/*	if (avformat_open_input(&avFormatCtx, "rtp://127.0.0.1:5004/", NULL, NULL)<0)*/
 		{
 			AfxMessageBox(_T("ERROR: opening input stream"));
 			hr = E_FAIL; // 파일 열기 실패
@@ -96,6 +98,8 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 		}
 	}
 
+	av_read_play(avFormatCtx);
+	
 	// 오디오 코덱 컨텍스트 받아오기
 	if (SUCCEEDED(hr))
 	{
@@ -130,6 +134,7 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 			}
 		}
 	}
+	
 
 	// 패킷 초기화
 	av_init_packet(&avPacket);
@@ -203,7 +208,6 @@ HRESULT CFFmpeg::InitCodecContext(
 			hr = E_FAIL; // 스트림 찾기 실패
 		}
 	}
-
 	// 스트림에 맞는 디코더 찾기
 	if (SUCCEEDED(hr))
 	{
@@ -215,7 +219,7 @@ HRESULT CFFmpeg::InitCodecContext(
 			hr = E_FAIL; // 디코더 찾기 실패
 		}
 	}
-
+	
 	// 디코더가 쓸 코덱 컨텍스트 할당
 	if (SUCCEEDED(hr))
 	{
@@ -276,9 +280,9 @@ int CFFmpeg::Decoder()
 	// 프레임 읽기
 	while (1)
 	{
-		if (audioq.nb_packets >= 10 || videoq.nb_packets >= 10) {
+		if (audioq.nb_packets >= 500 || videoq.nb_packets >= 300) {
 			Sleep(10);
-			//continue;
+			continue;
 		}
 
 		if (m_seek_req) {
@@ -333,6 +337,9 @@ int CFFmpeg::DecodeAudioFrame()
 
 		// 오디오 프레임 디코딩
 		decode_size = avcodec_decode_audio4(avAudioCodecCtx, avAudioFrame, &gotFrame, &audio_pkt);
+		//if (decode_size < 0) {
+		//	break;
+		//}
 		if (ret < 0)
 		{
 			AfxMessageBox(_T("ERROR: decoding audio frame"));
@@ -711,6 +718,8 @@ void CFFmpeg::cleanUp()
 	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
 	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
 	av_packet_unref(&flush_pkt);
+	av_read_pause(avFormatCtx);
+	avformat_network_deinit();
 }
 
 void CFFmpeg::stream_seek(double move_position, bool bDrag) {
