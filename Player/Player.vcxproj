@@ -196,6 +196,7 @@
     <ClInclude Include="FFmpeg.h" />
     <ClInclude Include="MediaInfoDlg.h" />
     <ClInclude Include="MySliderCtrl.h" />
+    <ClInclude Include="NetworkDlg.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerDlg.h" />
     <ClInclude Include="Resource.h" />
@@ -208,6 +209,7 @@
     <ClCompile Include="FFmpeg.cpp" />
     <ClCompile Include="MediaInfoDlg.cpp" />
     <ClCompile Include="MySliderCtrl.cpp" />
+    <ClCompile Include="NetworkDlg.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="PlayerDlg.cpp" />
     <ClCompile Include="stdafx.cpp">

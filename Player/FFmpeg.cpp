@@ -82,6 +82,7 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 		if (avformat_open_input(&avFormatCtx, (CStringA)filePath, NULL, NULL) < 0)
 		//if(avformat_open_input(&avFormatCtx, "rtsp://127.0.0.1:8554/", NULL, NULL)<0)
 	/*	if (avformat_open_input(&avFormatCtx, "rtp://127.0.0.1:5004/", NULL, NULL)<0)*/
+		//if (avformat_open_input(&avFormatCtx, "rtmp://172.30.40.155:1935/vodTest/doraemong", NULL, NULL)<0)
 		{
 			AfxMessageBox(_T("ERROR: opening input stream"));
 			hr = E_FAIL; // 파일 열기 실패

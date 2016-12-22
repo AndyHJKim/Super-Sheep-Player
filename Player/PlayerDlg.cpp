@@ -6,6 +6,7 @@
 #include "Player.h"
 #include "PlayerDlg.h"
 #include "MediaInfoDlg.h"
+#include "NetworkDlg.h"
 #include "afxdialogex.h"
 
 
@@ -94,6 +95,7 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_MESSAGE(SLIDER_MSG, &CPlayerDlg::OnSliderUpdate)
 	ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
 	ON_WM_ACTIVATE()
+	ON_COMMAND(IDM_OPEN_URI, &CPlayerDlg::OnOpenUri)
 END_MESSAGE_MAP()
 
 
@@ -416,7 +418,7 @@ void CPlayerDlg::OnOpenFile()
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
 		m_sliderSeek.ClearTics();	
-		SetTimer(1, 500, NULL);
+		//SetTimer(1, 500, NULL);
 	}
 
 }
@@ -721,4 +723,52 @@ LRESULT CPlayerDlg::OnSliderUpdate(WPARAM wParam, LPARAM lEvent) {
 	m_sPlaytime.SetWindowText((LPCTSTR)strDur);
 
 	return TRUE;
+}
+
+void CPlayerDlg::OnOpenUri()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	HRESULT hr = S_OK;
+	CString filePath = nullptr;
+
+	CNetworkDlg pDlg;
+
+	if (pDlg.DoModal() == IDOK)
+	{
+		filePath = pDlg.m_strAddress;
+
+		// 미디어 소스 열기 + 초기화
+		OnClose();
+		m_pCFFmpeg = new CFFmpeg(DECODE_VIDEO);
+
+		if (FAILED(m_pCFFmpeg->OpenMediaSource(filePath)))
+			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
+		m_pCFFmpeg->m_pAudio->XAudio2SetVolume(((float)m_sliderVolume.GetPos()) / 100);
+
+		// 재생 시작
+		eVideo = RENDER_STATE_STARTED;
+		m_btnPause.EnableWindow(TRUE);
+		m_btnStop.EnableWindow(TRUE);
+		m_sliderSeek.EnableWindow(TRUE);
+
+		m_pDecodeThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
+		SetTimer(0, 40, NULL);
+
+		/*m_dVideoDuration =
+		av_q2d(m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->time_base)
+		* m_pCFFmpeg->avFormatCtx->streams[m_pCFFmpeg->m_nVideoStreamIndex]->duration;*/
+		m_dVideoDuration = (double)m_pCFFmpeg->avFormatCtx->duration / AV_TIME_BASE;
+
+		CString strDur;
+		strDur.Format(_T("00:00:00 / %02d:%02d:%02d"),
+			(int)m_dVideoDuration / 3600, (int)m_dVideoDuration / 60 % 60,
+			(int)m_dVideoDuration % 60);
+		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
+		m_sliderSeek.SetPageSize(m_dVideoDuration);
+		m_sliderSeek.SetPos(0);
+		m_sliderSeek.SetRange(0, (int)m_dVideoDuration * 1000);
+		m_sliderSeek.ClearTics();
+
+		GetDlgItem(IDC_SLIDER_SEEK)->EnableWindow(FALSE);
+	}
 }
