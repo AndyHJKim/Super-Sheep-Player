@@ -119,14 +119,14 @@ public:
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 //	afx_msg void OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
+	afx_msg void OnOpenUri();
 
 	/// 자막 데이터가 저장되는 구조체 하나의 단위
 	struct ParsedSMI {
 		int		nSync;
 		CString strColor[10];
 		CString lpContext[10];
-	afx_msg void OnOpenUri();
-};
+	};
 
 	/// 자막 세팅 변수 및 함수
 	static SUBTITLE_STATE eSubtitle;

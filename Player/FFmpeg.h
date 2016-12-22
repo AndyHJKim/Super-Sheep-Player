@@ -124,7 +124,7 @@ public:
 	AudioRenderer *	m_pAudio;
 	CD3DRenderer *	m_pVideo;
 
-	
+	int				curr_sec;
 	double			audio_clock;
 	PacketQueue		audioq;
 	AVPacket		audio_pkt;
