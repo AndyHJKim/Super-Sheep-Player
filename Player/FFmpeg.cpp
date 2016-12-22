@@ -37,7 +37,7 @@ CFFmpeg::CFFmpeg(const int type)
 	, m_seek_flags(0)
 	, m_seek_req(0)
 	, m_seek_pos(0)
-	, curr_sec(0)
+	, currSubIndex(-1)
 {
 	av_register_all();
 	avcodec_register_all();
@@ -135,7 +135,7 @@ HRESULT CFFmpeg::OpenMediaSource(CString & filePath)
 			}
 		}
 	}
-	
+
 
 	// 패킷 초기화
 	av_init_packet(&avPacket);
@@ -220,7 +220,7 @@ HRESULT CFFmpeg::InitCodecContext(
 			hr = E_FAIL; // 디코더 찾기 실패
 		}
 	}
-	
+
 	// 디코더가 쓸 코덱 컨텍스트 할당
 	if (SUCCEEDED(hr))
 	{
@@ -656,6 +656,22 @@ void CFFmpeg::video_refresh_timer() {
 			if (pDlg->IsFullScreen())
 				pDlg->GetClientRect(viewRect);
 			
+			/// 자막 처리
+			if (pDlg->eSubtitle == _EXISTS)
+			{
+				int subClock = ref_clock * 1000;
+				for (int i = 0; i < pDlg->subtitleCount; i++)
+				{
+					if (subClock >= pDlg->subtitleSet[i]->nSync)
+					{
+						currSubIndex = i;
+					}
+					if (subClock < pDlg->subtitleSet[i]->nSync)
+						break;
+				}
+			}
+			/// 자막 처리
+
 			m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
 
 			/* update queue for next picture! */
@@ -726,7 +742,7 @@ void CFFmpeg::cleanUp()
 void CFFmpeg::stream_seek(double move_position, bool bDrag) {
 	if (!m_seek_req) {
 		if (bDrag) {
-			double pos = move_position;
+		double pos = move_position;
 
 			m_seek_pos = (int64_t)pos;
 			m_seek_flags = move_position < audio_clock ? AVSEEK_FLAG_BACKWARD : 0;
@@ -737,12 +753,12 @@ void CFFmpeg::stream_seek(double move_position, bool bDrag) {
 			pos += move_position;
 			//double pos = move_position;
 
-
-			//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
-			m_seek_pos = (int64_t)pos;
-			m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
-			m_seek_req = 1;
-		}
+		
+		//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+		m_seek_pos = (int64_t)pos;
+		m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
+		m_seek_req = 1;
+	}
 		
 	}
 }

@@ -52,7 +52,8 @@ END_MESSAGE_MAP()
 // CPlayerDlg 대화 상자
 
 
-RENDER_STATE CPlayerDlg::eVideo = RENDER_STATE_STOPPED;
+RENDER_STATE CPlayerDlg::eVideo = RENDER_STATE_STOPPED;	// 재생 상태 초기화
+SUBTITLE_STATE CPlayerDlg::eSubtitle = _NONE;			// 자막 상태 초기화
 
 
 CPlayerDlg::CPlayerDlg(CWnd* pParent /*=NULL*/)
@@ -93,8 +94,8 @@ BEGIN_MESSAGE_MAP(CPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CPlayerDlg::OnBnClickedButtonStop)
 	ON_WM_HSCROLL()
 	ON_MESSAGE(SLIDER_MSG, &CPlayerDlg::OnSliderUpdate)
-	ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
-	ON_WM_ACTIVATE()
+ON_COMMAND(IDM_REPORT, &CPlayerDlg::OnReport)
+ON_WM_ACTIVATE()
 	ON_COMMAND(IDM_OPEN_URI, &CPlayerDlg::OnOpenUri)
 END_MESSAGE_MAP()
 
@@ -395,6 +396,16 @@ void CPlayerDlg::OnOpenFile()
 			AfxMessageBox(_T("ERROR: OpenMediaSource function call"));
 		m_pCFFmpeg->m_pAudio->XAudio2SetVolume(((float)m_sliderVolume.GetPos()) / 100);
 		
+		// 자막 있는지 체크 → 있으면 바로 로드
+		CFileFind pFind;
+		CString subFilePath;
+		subFilePath = filePath.Left(filePath.ReverseFind('.')) + L".smi";
+		if (pFind.FindFile(subFilePath))
+		{
+			eSubtitle = _EXISTS;
+			subtitleCount = SetSubtitleData(subtitleSet, subFilePath);
+		}
+
 		// 재생 시작
 		eVideo = RENDER_STATE_STARTED;
 		m_btnPause.EnableWindow(TRUE);
@@ -428,7 +439,12 @@ void CPlayerDlg::OnOpenFile()
 // 파일 → 파일 닫기 메뉴
 void CPlayerDlg::OnClose()
 {
+	if (eSubtitle == _EXISTS)
+		fclose(pSubFd);
+
 	eVideo = RENDER_STATE_STOPPED;
+	eSubtitle = _NONE;
+	
 	if (m_pDecodeThread != nullptr)
 	{
 		m_pCFFmpeg->m_pAudio->XAudio2Pause();
@@ -682,7 +698,7 @@ void CPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 			default:
 				z1 = 1;
 				break;
-			}
+		}
 		}*/
 	}
 	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
@@ -712,6 +728,166 @@ void CPlayerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 		SetFocus();
 	}
 }
+
+
+
+// UTF8 to ANSI 인코딩 변환 함수
+char * CPlayerDlg::UTF8toANSI(char * pszCode)
+{
+	BSTR   bstrWide;
+	char * pszAnsi = NULL;
+	int    nLength;
+
+	nLength = MultiByteToWideChar(CP_UTF8, 0, pszCode, strlen(pszCode) + 1, NULL, NULL);
+	bstrWide = SysAllocStringLen(NULL, nLength);
+	MultiByteToWideChar(CP_UTF8, 0, pszCode, strlen(pszCode) + 1, bstrWide, nLength);
+
+	nLength = WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, NULL, 0, NULL, NULL);
+	pszAnsi = new char[nLength];
+
+	WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, pszAnsi, nLength, NULL, NULL);
+	SysFreeString(bstrWide);
+
+	return pszAnsi;
+}
+
+
+
+// SMI 자막 파싱 함수
+int CPlayerDlg::SetSubtitleData(ParsedSMI * data[], CString subFilePath)
+{
+	fopen_s(&pSubFd, (CStringA)subFilePath, "r");
+
+	int  lineNum = 0;
+	char str[256];
+
+	// SMI 포맷 판별
+	while (fscanf_s(pSubFd, "%s\n", str, sizeof(str)) != NULL)
+	{
+		CString cStr = (CString)UTF8toANSI(str);
+		if (cStr.CompareNoCase(L"<SAMI>") != 0)
+		{
+// 			printf("SAMI 파일이 아님. \n");
+			fclose(pSubFd);
+			return 0;
+		}
+		else
+		{
+// 			printf("SMI 파일 열기 완료. \n");
+			break;
+		}
+	}
+
+	// BODY 부분까지 별다른 처리 않고 진행
+	while (fscanf_s(pSubFd, "%s\n", str, sizeof(str)) != NULL)
+	{
+		CString cStr = (CString)UTF8toANSI(str);
+		int ret = cStr.CompareNoCase(L"<BODY>");
+		if (cStr.CompareNoCase(L"<BODY>") == 0)
+			break;
+	}
+
+	// BODY 이후 본격적 자막 파싱 시작
+	int subIndex = -1;
+	int colorIndex = 0;
+	int fontOpened = FALSE;
+	while (fscanf_s(pSubFd, "%s\n", str, 256) != NULL)
+	{
+		CString cStr = (CString)UTF8toANSI(str);
+
+		if (cStr.Find(L"<sync") != -1)
+		{
+			if (subIndex > -1 && data[subIndex]->lpContext[colorIndex] != "")
+			{
+				int lastChIndex = data[subIndex]->lpContext[colorIndex].GetLength() - 1;
+				if (data[subIndex]->lpContext[colorIndex][lastChIndex] == ' ')
+					data[subIndex]->lpContext[colorIndex].Delete(lastChIndex, 1);
+			}
+
+			fscanf_s(pSubFd, "%s\n", str, 256);
+			cStr = (CString)UTF8toANSI(str);
+			int i = cStr.Find(L"start=");
+			data[++subIndex] = new ParsedSMI;
+
+			CString tmp;
+			AfxExtractSubString(tmp, cStr, 1, '=');
+			data[subIndex]->nSync = _ttoi(tmp);
+			data[subIndex]->strColor[0] = { "#FFFFFF", };
+			data[subIndex]->lpContext[0] = { "", };
+			colorIndex = 0;
+
+			cStr.Delete(i, 6 + tmp.GetLength());
+
+			if (cStr.IsEmpty())
+				continue;
+		}
+
+		if (cStr.Find(L"<p>") != -1)
+		{
+			cStr.Delete(cStr.Find(L"<p>"), 3);
+		}
+
+		if (fontOpened == TRUE && cStr.Find(L"</font>") != -1)
+		{
+			int idx = cStr.Find(L"</font>");
+			data[subIndex]->lpContext[colorIndex++] += cStr.Mid(0, idx);
+			cStr.Delete(0, idx + 7);
+			fontOpened = FALSE;
+		}
+
+		if (cStr.Find(L"<font") != -1)
+		{
+			while (cStr.Find(L"<font") != -1)
+			{
+				fontOpened = TRUE;
+				fscanf_s(pSubFd, "%s\n", str, 256);
+				cStr = (CString)UTF8toANSI(str);
+				int i = cStr.Find(L"color=");
+
+				CString tmp;
+				AfxExtractSubString(tmp, cStr, 1, '"');
+				data[subIndex]->strColor[colorIndex] = tmp;
+				cStr.Delete(i, 7 + tmp.GetLength() + 2);
+
+				if (fontOpened == TRUE && cStr.Find(L"</font>") != -1)
+				{
+					int idx = cStr.Find(L"</font>");
+					data[subIndex]->lpContext[colorIndex++] += cStr.Mid(0, idx);
+					cStr.Delete(idx, 7);
+					fontOpened = FALSE;
+					continue;
+				}
+				else
+				{
+					data[subIndex]->lpContext[colorIndex] += cStr + ' ';
+					break;
+				}
+
+			}
+		}
+		else
+		{
+			if (fontOpened == TRUE && cStr.Find(L"</font>") != -1)
+			{
+				int idx = cStr.Find(L"</font>");
+				data[subIndex]->lpContext[colorIndex++] += cStr.Mid(0, idx);
+				cStr.Delete(idx, 7);
+				fontOpened = FALSE;
+			}
+			else
+				data[subIndex]->lpContext[colorIndex] += cStr + ' ';
+		}
+
+
+
+		if (cStr.Find(L"</body>") == 0)
+			break;
+	}
+
+	fclose(pSubFd);
+	return subIndex;
+}
+
 
 LRESULT CPlayerDlg::OnSliderUpdate(WPARAM wParam, LPARAM lEvent) {
 	CString strDur;

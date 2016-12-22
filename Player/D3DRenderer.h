@@ -1,13 +1,13 @@
 
-// D3DRenderer.h : Direct3D 화면 표시
+// D3DRenderer.h : Direct3D 화면 표시 = 영상 + 자막
 //
 
 #pragma once
 
-#include <d3d9.h>
+#include <d3dx9core.h>
 
 
-// D3D Renderer 클래스
+// D3D Renderer 클래스 > 화면 전체 출력 및 비디오 출력 담당
 class CD3DRenderer
 {
 public:
@@ -15,10 +15,13 @@ public:
 	~CD3DRenderer();
 
 	HRESULT D3DInitialize(HWND hWnd, ULONG pxWidth, ULONG pxHeight, RECT viewRect);
-	HRESULT D3DVideoRender(UINT8* buffer, CRect docRect);
+	HRESULT D3DVideoRender(UINT8 * buffer, CRect docRect);
 	void D3DCleanup();
 
-	enum RENDER_STATE renderState;
+	// 자막 처리
+	D3DCOLOR ConvertHextoRGB(CString input);
+	void SubtitleProcess(int x, int y, CString * subtitle, CString * color);
+	void DrawSubtitle(int x, int y, DWORD color, LPD3DXFONT g_pFont, LPCSTR str);
 
 private:
 	CRITICAL_SECTION	m_critial;
@@ -34,8 +37,12 @@ private:
 	ULONG	pixelWidth;
 	ULONG	pixelHeight;
 
-	double	aspRatio;
-	const int bitPerPixel;
+	double		aspRatio;
+	const int	bitPerPixel;
+
+	// 자막 출력을 위한 변수
+	LPD3DXFONT pFontOut;
+	LPD3DXFONT pFont;
 
 };
 
