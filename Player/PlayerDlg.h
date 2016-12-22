@@ -14,6 +14,22 @@ extern "C" {
 #include "afxcmn.h"
 
 
+// 플레이어 재생 상태
+enum RENDER_STATE {
+	RENDER_STATE_STARTED = 1,
+	RENDER_STATE_STOPPED,
+	RENDER_STATE_PAUSED,
+	//RENDER_STATE_SHUTDOWN
+};
+
+
+// 자막 파일 유무
+enum SUBTITLE_STATE {
+	_EXISTS = 1,
+	_NONE,
+};
+
+
 // CPlayerDlg 대화 상자
 class CPlayerDlg : public CDialogEx
 {
@@ -97,14 +113,22 @@ public:
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 //	afx_msg void OnReleasedcaptureSliderSeek(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
-};
 
+	/// 자막 데이터가 저장되는 구조체 하나의 단위
+	struct ParsedSMI {
+		int		nSync;
+		CString strColor[10];
+		CString lpContext[10];
+	};
 
-// 플레이어 재생 상태
-enum RENDER_STATE {
-	RENDER_STATE_STARTED = 1,
-	RENDER_STATE_STOPPED,
-	RENDER_STATE_PAUSED,
-	//RENDER_STATE_SHUTDOWN
+	/// 자막 세팅 변수 및 함수
+	static SUBTITLE_STATE eSubtitle;
+	ParsedSMI * subtitleSet[512];
+	FILE *		pSubFd;
+	int  subtitleCount;
+
+	char * UTF8toANSI(char * pszCode);
+	int SetSubtitleData(ParsedSMI * data[], CString subFilePath);
+
 };
 

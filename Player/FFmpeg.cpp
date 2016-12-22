@@ -37,6 +37,7 @@ CFFmpeg::CFFmpeg(const int type)
 	, m_seek_flags(0)
 	, m_seek_req(0)
 	, m_seek_pos(0)
+	, currSubIndex(-1)
 {
 	av_register_all();
 	avformat_network_init();
@@ -642,6 +643,22 @@ void CFFmpeg::video_refresh_timer() {
 			if (pDlg->IsFullScreen())
 				pDlg->GetClientRect(viewRect);
 			
+			/// 磊阜 贸府
+			if (pDlg->eSubtitle == _EXISTS)
+			{
+				int subClock = ref_clock * 1000;
+				for (int i = 0; i < pDlg->subtitleCount; i++)
+				{
+					if (subClock >= pDlg->subtitleSet[i]->nSync)
+					{
+						currSubIndex = i;
+					}
+					if (subClock < pDlg->subtitleSet[i]->nSync)
+						break;
+				}
+			}
+			/// 磊阜 贸府
+
 			m_pVideo->D3DVideoRender(*(vp->videoData), viewRect);
 
 			/* update queue for next picture! */

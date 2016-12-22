@@ -144,9 +144,11 @@ public:
 
 	uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
 
-	int m_seek_req;			//	찾을지 플래그
-	int m_seek_flags;		//	앞으로 찾을지 뒤로 찾을지 플래그
-	int64_t m_seek_pos;		//	찾을 위치
-	AVPacket flush_pkt;		//	버퍼 초기화하기 위핸 패킷
+	int m_seek_req;			// 찾을지 플래그
+	int m_seek_flags;		// 앞으로 찾을지 뒤로 찾을지 플래그
+	int64_t m_seek_pos;		// 찾을 위치
+	AVPacket flush_pkt;		// 버퍼 초기화하기 위핸 패킷
+							   
+	int currSubIndex;		// 현재 진행중인 자막의 인덱스
 };
 
