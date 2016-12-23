@@ -209,6 +209,7 @@ HRESULT CFFmpeg::InitCodecContext(
 			hr = E_FAIL; // 스트림 찾기 실패
 		}
 	}
+	
 	// 스트림에 맞는 디코더 찾기
 	if (SUCCEEDED(hr))
 	{
@@ -281,7 +282,7 @@ int CFFmpeg::Decoder()
 	// 프레임 읽기
 	while (1)
 	{
-		if (audioq.nb_packets >= 500 || videoq.nb_packets >= 300) {
+		if (audioq.nb_packets >= 100 || videoq.nb_packets >= 60) {
 			Sleep(10);
 			continue;
 		}
@@ -401,7 +402,10 @@ int CFFmpeg::DecodeAudioFrame()
 			curr_sec = audio_clock;
 			AfxGetApp()->m_pMainWnd->PostMessageW(SLIDER_MSG, curr_sec, NULL);
 		}
+		av_frame_unref(avAudioFrame);
 	}
+	
+	av_init_packet(&audio_pkt);
 
 	/* next packet */
 	if (packet_queue_get(&audioq, &audio_pkt, 1) < 0) {
@@ -515,6 +519,7 @@ int CFFmpeg::DecodeVideoFrame()
 			pictq_size++;
 			lock.unlock();
 		}
+		av_frame_unref(avVideoFrame);
 		av_free_packet(&video_pkt);
 	}
 	av_free(avVideoFrame);
@@ -728,14 +733,39 @@ double CFFmpeg::get_audio_clock() {
 
 void CFFmpeg::cleanUp()
 {
+	for (int i = 0; i < VIDEO_PICTURE_QUEUE_SIZE; i++) {
+		av_free(pictq[i].videoData[0]);
+		av_free(pictq[i].videoLinesize);
+	}
+	//delete[] pictq;
+
+	delete[] m_pSwr_buf;
+	swr_free(&m_pSwrCtx);
 	av_packet_unref(&avPacket);
+	packet_queue_flush(&audioq);
+	packet_queue_flush(&videoq);
+	
 	av_frame_free(&avAudioFrame);
 	av_frame_free(&avVideoFrame);
+	
+
+	avcodec_close(avAudioCodecCtx);
+	avcodec_close(avVideoCodecCtx);
+
 	avcodec_free_context(&avAudioCodecCtx);		// Audio Codec Context 반환
 	avcodec_free_context(&avVideoCodecCtx);		// Video Codec Context 반환
-	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
-	av_packet_unref(&flush_pkt);
+
 	av_read_pause(avFormatCtx);
+
+	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
+	av_free_packet(&flush_pkt);
+	av_free_packet(&avPacket);
+	av_free_packet(&audio_pkt);
+
+	audioDecodeThread.detach();
+	videoDecodeThread.detach();
+
+	avformat_free_context(avFormatCtx);
 	avformat_network_deinit();
 }
 

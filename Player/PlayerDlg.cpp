@@ -463,9 +463,10 @@ void CPlayerDlg::OnClose()
 	{
 		m_pCFFmpeg->m_pAudio->XAudio2Cleanup();
 		m_pCFFmpeg->m_pVideo->D3DCleanup();
-// 		delete m_pCFFmpeg->m_pAudio;
-// 		delete m_pCFFmpeg->m_pVideo;
-// 		delete m_pCFFmpeg;
+		m_pCFFmpeg->cleanUp();
+ 		delete m_pCFFmpeg->m_pAudio;
+ 		delete m_pCFFmpeg->m_pVideo;
+ 		delete m_pCFFmpeg;
 		m_pCFFmpeg = nullptr;
 
 		m_btnPause.EnableWindow(FALSE);
