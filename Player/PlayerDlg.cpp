@@ -370,6 +370,7 @@ void CPlayerDlg::OnOpenFile()
 {
 	HRESULT hr = S_OK;
 	CString filePath = nullptr;
+	GetDlgItem(IDC_SLIDER_SEEK)->EnableWindow(TRUE);
 
 	CFileDialog pDlg(
 		TRUE,
@@ -429,7 +430,7 @@ void CPlayerDlg::OnOpenFile()
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
 		m_sliderSeek.ClearTics();	
-		//SetTimer(1, 500, NULL);
+		SetTimer(1, 500, NULL);
 	}
 
 }
