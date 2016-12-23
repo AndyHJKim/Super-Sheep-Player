@@ -70,6 +70,7 @@ void CMySliderCtrl::OnLButtonDown(UINT nFlags, CPoint point)
 	SetPos(nPos);
 	double move;
 	move = nPos / 1000 - pMain->m_pCFFmpeg->audio_clock;
+	//move = nPos / 1000;
 	pMain->m_pCFFmpeg->stream_seek(move, 0);
 
 	CSliderCtrl::OnLButtonDown(nFlags, point);

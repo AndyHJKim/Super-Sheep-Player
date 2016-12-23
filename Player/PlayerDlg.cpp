@@ -370,7 +370,7 @@ void CPlayerDlg::OnOpenFile()
 {
 	HRESULT hr = S_OK;
 	CString filePath = nullptr;
-	GetDlgItem(IDC_SLIDER_SEEK)->EnableWindow(TRUE);
+	//GetDlgItem(IDC_SLIDER_SEEK)->EnableWindow(TRUE);
 
 	CFileDialog pDlg(
 		TRUE,
@@ -426,7 +426,7 @@ void CPlayerDlg::OnOpenFile()
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
-		m_sliderSeek.SetPageSize(m_dVideoDuration);
+		//m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
 		m_sliderSeek.ClearTics();	
@@ -927,7 +927,7 @@ void CPlayerDlg::OnOpenUri()
 		eVideo = RENDER_STATE_STARTED;
 		m_btnPause.EnableWindow(TRUE);
 		m_btnStop.EnableWindow(TRUE);
-		m_sliderSeek.EnableWindow(TRUE);
+		//m_sliderSeek.EnableWindow(TRUE);
 
 		m_pDecodeThread = AfxBeginThread(FFmpegDecoderThread, m_pCFFmpeg);
 		SetTimer(0, 40, NULL);
@@ -942,10 +942,10 @@ void CPlayerDlg::OnOpenUri()
 			(int)m_dVideoDuration / 3600, (int)m_dVideoDuration / 60 % 60,
 			(int)m_dVideoDuration % 60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
-		m_sliderSeek.SetPageSize(m_dVideoDuration);
+		/*m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration * 1000);
-		m_sliderSeek.ClearTics();
+		m_sliderSeek.ClearTics();*/
 
 		GetDlgItem(IDC_SLIDER_SEEK)->EnableWindow(FALSE);
 	}

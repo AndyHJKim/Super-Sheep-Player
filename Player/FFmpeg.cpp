@@ -790,7 +790,7 @@ void CFFmpeg::stream_seek(double move_position, bool bDrag) {
 		m_seek_pos = (int64_t)pos;
 		m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
 		m_seek_req = 1;
-	}
+		}
 		
 	}
 }
