@@ -426,7 +426,7 @@ void CPlayerDlg::OnOpenFile()
 			(int)m_dVideoDuration/3600, (int)m_dVideoDuration/60 % 60,
 			(int)m_dVideoDuration%60);
 		m_sPlaytime.SetWindowText((LPCTSTR)strDur);
-		//m_sliderSeek.SetPageSize(m_dVideoDuration);
+		m_sliderSeek.SetPageSize(m_dVideoDuration);
 		m_sliderSeek.SetPos(0);
 		m_sliderSeek.SetRange(0, (int)m_dVideoDuration*1000);
 		m_sliderSeek.ClearTics();	

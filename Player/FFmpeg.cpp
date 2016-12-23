@@ -288,8 +288,8 @@ int CFFmpeg::Decoder()
 		}
 
 		if (m_seek_req) {
-			//AVRational time_base_q = { 1, AV_TIME_BASE };
-			AVRational time_base_q = { 1, 1 };
+			AVRational time_base_q = { 1, AV_TIME_BASE };
+			//AVRational time_base_q = { 1, 1 };
 			int64_t seek_target = av_rescale_q(m_seek_pos, time_base_q, avVideoStream->time_base);
 
 
@@ -774,25 +774,26 @@ void CFFmpeg::cleanUp()
 void CFFmpeg::stream_seek(double move_position, bool bDrag) {
 	if (!m_seek_req) {
 		if (bDrag) {
-		double pos = move_position;
+			double pos = move_position;
 
-			m_seek_pos = (int64_t)pos;
+			m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+			//m_seek_pos = (int64_t)pos;
 			m_seek_flags = move_position < audio_clock ? AVSEEK_FLAG_BACKWARD : 0;
 			m_seek_req = 1;
-		}
+			}
 		else {
-			double pos = video_clock;
+			double pos = audio_clock;
 			pos += move_position;
 			//double pos = move_position;
 
 		
-		//m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
-		m_seek_pos = (int64_t)pos;
-		m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
-		m_seek_req = 1;
+			m_seek_pos = (int64_t)(pos*AV_TIME_BASE);
+			//m_seek_pos = (int64_t)pos;
+			m_seek_flags = move_position < 0 ? AVSEEK_FLAG_BACKWARD : 0;
+			m_seek_req = 1;
 		}
 		
-	}
+	}	
 }
 
 void CFFmpeg::packet_queue_flush(PacketQueue *q) {
