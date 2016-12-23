@@ -733,6 +733,9 @@ double CFFmpeg::get_audio_clock() {
 
 void CFFmpeg::cleanUp()
 {
+
+	packet_queue_flush(&audioq);
+	packet_queue_flush(&videoq);
 	for (int i = 0; i < VIDEO_PICTURE_QUEUE_SIZE; i++) {
 		av_free(pictq[i].videoData[0]);
 		av_free(pictq[i].videoLinesize);
@@ -741,9 +744,8 @@ void CFFmpeg::cleanUp()
 
 	delete[] m_pSwr_buf;
 	swr_free(&m_pSwrCtx);
-	av_packet_unref(&avPacket);
-	packet_queue_flush(&audioq);
-	packet_queue_flush(&videoq);
+	//av_packet_unref(&avPacket);
+	
 	
 	av_frame_free(&avAudioFrame);
 	av_frame_free(&avVideoFrame);
@@ -759,7 +761,7 @@ void CFFmpeg::cleanUp()
 
 	avformat_close_input(&avFormatCtx);			// 열린 스트림 닫기
 	av_free_packet(&flush_pkt);
-	av_free_packet(&avPacket);
+	//av_free_packet(&avPacket);
 	av_free_packet(&audio_pkt);
 
 	audioDecodeThread.detach();
